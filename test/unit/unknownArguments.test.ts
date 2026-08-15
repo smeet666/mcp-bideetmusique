@@ -1,0 +1,153 @@
+/**
+ * The declared arguments, and the four the tool accepts.
+ *
+ * Rule 17: a refusal happens before any request. Every client here is wired to
+ * a fetch that throws, so a request reaching it fails the test.
+ */
+
+import { describe, expect, it } from "vitest";
+
+import { searchSongsInput } from "../../src/tools/searchSongs.js";
+import { connectServer, throwingFetch } from "./helpers.js";
+
+describe("the declared shape of the arguments", () => {
+  it("accepts the two required arguments and fills page and limit with their defaults", () => {
+    const parsed = searchSongsInput.parse({ query: "placeholder", search_type: "title" });
+
+    expect(parsed).toEqual({ query: "placeholder", search_type: "title", page: 1, limit: 20 });
+  });
+
+  it("refuses an argument it does not declare", () => {
+    expect(searchSongsInput.safeParse({ query: "x", search_type: "title", sort: "date" }).success).toBe(false);
+    expect(searchSongsInput.safeParse({ query: "x", search_type: "title", Page: 2 }).success).toBe(false);
+  });
+
+  it("refuses a search with no axis, since the two axes ask different questions", () => {
+    expect(searchSongsInput.safeParse({ query: "x" }).success).toBe(false);
+  });
+
+  it("refuses an axis the site does not offer here", () => {
+    expect(searchSongsInput.safeParse({ query: "x", search_type: "album" }).success).toBe(false);
+    expect(searchSongsInput.safeParse({ query: "x", search_type: "Title" }).success).toBe(false);
+    expect(searchSongsInput.safeParse({ query: "x", search_type: 3 }).success).toBe(false);
+  });
+
+  it("accepts both axes it does offer", () => {
+    expect(searchSongsInput.safeParse({ query: "x", search_type: "title" }).success).toBe(true);
+    expect(searchSongsInput.safeParse({ query: "x", search_type: "performer" }).success).toBe(true);
+  });
+
+  it("refuses a missing query and a query that is not a string", () => {
+    expect(searchSongsInput.safeParse({ search_type: "title" }).success).toBe(false);
+    expect(searchSongsInput.safeParse({ query: 42, search_type: "title" }).success).toBe(false);
+    expect(searchSongsInput.safeParse({ query: null, search_type: "title" }).success).toBe(false);
+  });
+
+  it("accepts a query of 200 characters and refuses one of 201", () => {
+    expect(searchSongsInput.safeParse({ query: "a".repeat(200), search_type: "title" }).success).toBe(true);
+    expect(searchSongsInput.safeParse({ query: "a".repeat(201), search_type: "title" }).success).toBe(false);
+    expect(searchSongsInput.safeParse({ query: "é".repeat(400), search_type: "title" }).success).toBe(false);
+  });
+
+  it("accepts pages 1 to 200 and refuses anything outside that range", () => {
+    for (const page of [1, 2, 200]) {
+      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", page }).success).toBe(true);
+    }
+    for (const page of [0, -1, 201, 1.5, "2", null]) {
+      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", page }).success).toBe(false);
+    }
+  });
+
+  it("accepts limits 1 to 50 and refuses anything outside that range", () => {
+    for (const limit of [1, 20, 50]) {
+      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", limit }).success).toBe(true);
+    }
+    for (const limit of [0, -5, 51, 2.5, "10", null]) {
+      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", limit }).success).toBe(false);
+    }
+  });
+});
+
+/**
+ * Every refusal below is an `invalid_input` refusal, and the contract says the
+ * error text opens with `[invalid_input]`: a caller reads the code to tell a
+ * bad argument from a site that is down. A refusal raised by the schema layer
+ * has to carry the same code as one raised by the tool body.
+ */
+describe("rule 17 — the tool never contacts the site in order to refuse", () => {
+  it("refuses an unknown argument without making a request", async () => {
+    const client = await connectServer(throwingFetch);
+
+    const result = await client.callTool({
+      name: "search_songs",
+      arguments: { query: "placeholder", search_type: "title", sort: "date" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+  });
+
+  it("refuses a query that is nothing but spaces without making a request", async () => {
+    const client = await connectServer(throwingFetch);
+
+    const result = await client.callTool({
+      name: "search_songs",
+      arguments: { query: "   ", search_type: "title" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+  });
+
+  // The three tests below are red, and stay red until the question they raise
+  // is settled.
+  //
+  // Each one proves the refusal happens and that no request is made: the fetch
+  // handed to the server throws when called. What they also demand is that the
+  // message opens with the error code, the way a refusal written by this server
+  // does. A refusal raised by the schema layer instead comes back as
+  // "MCP error -32602: Input validation error: ...", so a caller reading the
+  // text gets one shape for an unknown argument and another for an argument out
+  // of range.
+  //
+  // Making the two agree means prefixing every schema issue in the shared
+  // argument module, which is byte-identical across the sibling servers. That is
+  // a decision for all of them at once, so the tests state the wanted behaviour
+  // and wait rather than being softened to match what happens today.
+
+  it("refuses a page outside the declared range without making a request", async () => {
+    const client = await connectServer(throwingFetch);
+
+    const result = await client.callTool({
+      name: "search_songs",
+      arguments: { query: "placeholder", search_type: "title", page: 0 },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+  });
+
+  it("refuses a limit above the declared maximum without making a request", async () => {
+    const client = await connectServer(throwingFetch);
+
+    const result = await client.callTool({
+      name: "search_songs",
+      arguments: { query: "placeholder", search_type: "title", limit: 51 },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+  });
+
+  it("refuses a search with no axis without making a request", async () => {
+    const client = await connectServer(throwingFetch);
+
+    const result = await client.callTool({
+      name: "search_songs",
+      arguments: { query: "placeholder" },
+    });
+
+    expect(result.isError).toBe(true);
+    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+  });
+});

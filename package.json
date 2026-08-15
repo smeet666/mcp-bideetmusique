@@ -1,0 +1,87 @@
+{
+  "name": "mcp-bideetmusique",
+  "version": "0.1.0",
+  "description": "MCP server for Bide & Musique. Search the collection of forgotten French songs by performer or by title. No API key required.",
+  "type": "module",
+  "license": "MIT",
+  "author": "smeet666",
+  "homepage": "https://github.com/smeet666/mcp-bideetmusique#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smeet666/mcp-bideetmusique.git"
+  },
+  "bugs": {
+    "url": "https://github.com/smeet666/mcp-bideetmusique/issues"
+  },
+  "funding": {
+    "type": "buymeacoffee",
+    "url": "https://buymeacoffee.com/smeet666"
+  },
+  "mcpName": "io.github.smeet666/mcp-bideetmusique",
+  "bin": {
+    "mcp-bideetmusique": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/bideetmusique/client.d.ts",
+      "import": "./dist/bideetmusique/client.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "server.json"
+  ],
+  "engines": {
+    "node": ">=20.18.1"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run build:fixtures",
+    "test": "vitest run test/unit",
+    "test:live": "vitest run test/live --testTimeout=60000",
+    "build:fixtures": "node scripts/build-fixtures.mjs",
+    "format": "prettier --write .",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build",
+    "start": "node dist/index.js",
+    "inspector": "npx @modelcontextprotocol/inspector node dist/index.js"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "model-context-protocol",
+    "mcp-server",
+    "bide-et-musique",
+    "music",
+    "song",
+    "songs",
+    "webradio",
+    "french",
+    "chanson",
+    "discography",
+    "claude",
+    "cursor",
+    "llm",
+    "ai",
+    "no-api-key"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prettier": "^3.4.2",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
+  }
+}
