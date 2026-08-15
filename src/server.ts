@@ -50,9 +50,12 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
         "by hand by the volunteer association that runs the station. No API key and no account are " +
         "needed. search_songs asks along one axis at a time and the axis has to be named: " +
         "'performer' for the artist credited on the record, 'title' for the name of the song, " +
-        "'writer' for who wrote or composed it, 'lyrics' for the words sung in it. A search on one " +
-        "axis says nothing about the others, so a name that returns nothing as a performer may still " +
-        "be a title. Several keywords are combined with AND and each is matched inside words, so " +
+        "'writer' for who wrote or composed it, 'lyrics' for the words sung in it, 'label' for the " +
+        "label it came out on, 'year' for the year printed on it. A search on one axis says nothing " +
+        "about the others, so a name that returns nothing as a performer may still be a title. " +
+        "The year axis takes one four-digit year and nothing else: the site drops any other word " +
+        "there instead of filtering on it. Several keywords are combined with AND and each is " +
+        "matched inside words, so " +
         "every extra word narrows the search; a quoted phrase returns nothing, whatever the site's " +
         "own form offers. The count returned is the number the site prints, counting " +
         "matching songs across every page, and it is normal for it to exceed the rows of one page. " +

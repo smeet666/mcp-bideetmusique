@@ -14,13 +14,15 @@ const ALLOWED_HOSTS = new Set(["bide-et-musique.com", "www.bide-et-musique.com"]
  * song is called, who wrote it, and what is sung in it. An answer on one says
  * nothing about the others, so they are never merged.
  */
-export type SearchType = "performer" | "title" | "writer" | "lyrics";
+export type SearchType = "performer" | "title" | "writer" | "lyrics" | "label" | "year";
 
 export const SEARCH_TYPE_CODES: Record<SearchType, number> = {
   performer: 2,
   title: 3,
   writer: 4,
+  label: 5,
   lyrics: 6,
+  year: 7,
 };
 
 /** The site's own wording for each axis, used when an answer has to name one. */
@@ -28,8 +30,21 @@ export const SEARCH_TYPE_LABELS: Record<SearchType, string> = {
   performer: "Interprète",
   title: "Nom du morceau",
   writer: "Auteur / Compositeur",
+  label: "Label",
   lyrics: "Paroles",
+  year: "Année",
 };
+
+/**
+ * The year axis takes one whole year and nothing else.
+ *
+ * It matches a year exactly rather than inside a number, so "198" finds nothing,
+ * and it drops any other word rather than filtering on it: "1983 vacances"
+ * answers with every song of 1983, which reads as a filtered answer and is not
+ * one. So a query that is not a year is refused before it can look like a
+ * search.
+ */
+export const YEAR_QUERY = /^\d{4}$/;
 
 export interface SearchUrlInput {
   query: string;

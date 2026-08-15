@@ -6,7 +6,7 @@
 import { z } from "zod";
 import type { BideEtMusiqueClient } from "../bideetmusique/client.js";
 import type { SearchType } from "../bideetmusique/urls.js";
-import { SEARCH_TYPE_LABELS } from "../bideetmusique/urls.js";
+import { SEARCH_TYPE_LABELS, YEAR_QUERY } from "../bideetmusique/urls.js";
 import { invalidInput } from "../errors.js";
 import { strictInput } from "./arguments.js";
 import { ok, toToolError } from "./shared.js";
@@ -18,8 +18,12 @@ export const searchSongsDescription = [
   "terms work best.",
   "'search_type' picks the axis and has to be stated: 'performer' for the artist credited on the",
   "record, 'title' for the name of the song, 'writer' for who wrote or composed it, 'lyrics' for the",
-  "words sung in it. Each asks a different question and they are never merged, so a name that finds",
-  "nothing as a performer may still be a title.",
+  "words sung in it, 'label' for the label it came out on, 'year' for the year printed on it. Each",
+  "asks a different question and they are never merged, so a name that finds nothing as a performer",
+  "may still be a title.",
+  "'year' takes one four-digit year and nothing else: the site drops any other word on that axis",
+  "instead of filtering on it, and the ranges its own form documents return nothing. To combine a",
+  "year with words, search the words on their own axis and read each record's year from its page.",
   "Use 'lyrics' to find a song from a line someone remembers. It answers with the songs whose words",
   "match; the words themselves stay on the site, which publishes them while awaiting permission from",
   "the rights holders.",
@@ -42,7 +46,7 @@ export const searchSongsInput = strictInput({
     .max(200)
     .describe("What to search for, in French, for example 'Pierre Bachelet' or 'vacances'."),
   search_type: z
-    .enum(["performer", "title", "writer", "lyrics"])
+    .enum(["performer", "title", "writer", "lyrics", "label", "year"])
     .describe(
       "Which axis to search: 'performer' for the artist credited on the record, 'title' for the " +
         "name of the song, 'writer' for who wrote or composed it, 'lyrics' for the words sung in it.",
@@ -65,7 +69,7 @@ export const searchSongsInput = strictInput({
 
 export const searchSongsOutputShape = {
   query: z.string(),
-  search_type: z.enum(["performer", "title", "writer", "lyrics"]),
+  search_type: z.enum(["performer", "title", "writer", "lyrics", "label", "year"]),
   page_requested: z.number().int(),
   page_served: z
     .number()
@@ -198,6 +202,8 @@ const MATCHED_FIELD: Partial<
 const INVISIBLE_MATCH: Partial<Record<SearchType, string>> = {
   writer: "the writing and composing credits",
   lyrics: "the words sung in the song",
+  label: "the label the record came out on",
+  year: "the year printed on the record",
 };
 
 export async function runSearchSongs(
@@ -214,6 +220,17 @@ export async function runSearchSongs(
         "'query' cannot be empty.",
         "Give a performer or a song title, for example query=\"Pierre Bachelet\" with " +
           'search_type="performer".',
+      );
+    }
+
+    if (args.search_type === "year" && !YEAR_QUERY.test(query)) {
+      throw invalidInput(
+        `"${query}" is not a year, and the Année axis takes nothing else.`,
+        "Pass a single four-digit year, for example 1983. Bide & Musique drops any other word on " +
+          "this axis instead of filtering on it, so a year with a word beside it answers with every " +
+          "song of that year while looking like a narrower search. The ranges its own form " +
+          'documents, such as ">1980 <=1985", return nothing at all. To combine a year with words, ' +
+          "search the words on their own axis and read each record's year from its page.",
       );
     }
 
