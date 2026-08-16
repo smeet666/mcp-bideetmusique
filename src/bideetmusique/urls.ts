@@ -75,6 +75,9 @@ export function buildSearchUrl({ query, searchType, page = 1 }: SearchUrlInput):
   return url.toString();
 }
 
+/** A song id as the site numbers them, and as search_songs hands them back. */
+export const SONG_ID = /^\d+$/;
+
 export function songUrl(id: string): string {
   return `${BASE_URL}/song/${id}.html`;
 }

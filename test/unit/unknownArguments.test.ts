@@ -69,10 +69,9 @@ describe("the declared shape of the arguments", () => {
 });
 
 /**
- * Every refusal below is an `invalid_input` refusal, and the contract says the
- * error text opens with `[invalid_input]`: a caller reads the code to tell a
- * bad argument from a site that is down. A refusal raised by the schema layer
- * has to carry the same code as one raised by the tool body.
+ * What a caller depends on when an argument is bad: the call is refused, the
+ * site is left alone, and the message names what to fix. The fetch handed to
+ * the server throws when touched, so a refusal that came too late fails here.
  */
 describe("rule 17 — the tool never contacts the site in order to refuse", () => {
   it("refuses an unknown argument without making a request", async () => {
@@ -84,7 +83,7 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("sort");
   });
 
   it("refuses a query that is nothing but spaces without making a request", async () => {
@@ -96,7 +95,7 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("query");
   });
 
   // An argument the schema rejects is refused before this server's code runs, so

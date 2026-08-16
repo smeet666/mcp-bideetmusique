@@ -11,6 +11,13 @@ import { BideEtMusiqueClient } from "./bideetmusique/client.js";
 import type { Config, Logger } from "./config.js";
 import { createLogger, loadConfig } from "./config.js";
 import {
+  getSongDescription,
+  getSongInput,
+  getSongOutputShape,
+  runGetSong,
+} from "./tools/getSong.js";
+import type { GetSongArgs } from "./tools/getSong.js";
+import {
   runSearchSongs,
   searchSongsDescription,
   searchSongsInput,
@@ -60,10 +67,13 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
         "own form offers. The count returned is the number the site prints, counting " +
         "matching songs across every page, and it is normal for it to exceed the rows of one page. " +
         "The site answers a page past the last one with the last page and no error, so read " +
-        "'page_served' rather than assuming the page asked for. Song pages carry lyrics that Bide & " +
-        "Musique publishes while awaiting permission from the rights holders; this server serves " +
-        "none of that text and links the page instead. Credit Bide & Musique and link the song page " +
-        "when you show a result.",
+        "'page_served' rather than assuming the page asked for. get_song resolves an id from a " +
+        "search into the record itself: year, writers, duration, label, catalogue reference and " +
+        "sleeve. Three of those are always stated and the rest are absent on some records, coming " +
+        "back null rather than guessed, and a counter the page prints nothing for is unknown rather " +
+        "than zero. Song pages carry lyrics that Bide & Musique publishes while awaiting permission " +
+        "from the rights holders; this server serves none of that text and links the page instead. " +
+        "Credit Bide & Musique and link the song page when you show a result.",
     },
   );
 
@@ -77,6 +87,18 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
       annotations: READ_ONLY,
     },
     async (args) => runSearchSongs(client, args as SearchSongsArgs),
+  );
+
+  server.registerTool(
+    "get_song",
+    {
+      title: "Read a song's record",
+      description: getSongDescription,
+      inputSchema: getSongInput,
+      outputSchema: z.object(getSongOutputShape),
+      annotations: READ_ONLY,
+    },
+    async (args) => runGetSong(client, args as GetSongArgs),
   );
 
   logger.info(

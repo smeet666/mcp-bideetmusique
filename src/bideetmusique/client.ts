@@ -12,15 +12,16 @@ import {
   loadConfig,
   withProjectIdentity,
 } from "../config.js";
-import type { SearchPage } from "../types.js";
+import { invalidInput } from "../errors.js";
+import type { SearchPage, Song } from "../types.js";
 import { TtlLruCache } from "./cache.js";
 import type { Fetched } from "./http.js";
 import { fetchHtml } from "./http.js";
 import { parseSearchPage } from "./parseSearch.js";
-import { parseSongPage } from "./parseSong.js";
+import { parseSongPage, parseSongRecord } from "./parseSong.js";
 import { RateLimiter } from "./rateLimiter.js";
 import type { SearchType } from "./urls.js";
-import { buildSearchUrl, extractSongId } from "./urls.js";
+import { SONG_ID, buildSearchUrl, extractSongId, songUrl } from "./urls.js";
 
 export interface BideEtMusiqueClientOptions {
   config?: Config;
@@ -101,6 +102,24 @@ export class BideEtMusiqueClient {
       }
       return parseSearchPage(html, finalUrl);
     });
+  }
+
+  /**
+   * Read one record.
+   *
+   * The id is checked here rather than only at the tool, since this class is
+   * published as a library: a malformed id would otherwise be asked of the site
+   * and come back as a 404 that reads like an absent song.
+   */
+  async getSong(id: string): Promise<Outcome<Song>> {
+    if (!SONG_ID.test(id)) {
+      throw invalidInput(
+        `"${id}" is not a Bide & Musique song id.`,
+        "Ids are digits only, as returned by search_songs.",
+      );
+    }
+    const url = songUrl(id);
+    return this.fetchParsed(url, ({ html, finalUrl }) => parseSongRecord(html, finalUrl, id));
   }
 
   /**
