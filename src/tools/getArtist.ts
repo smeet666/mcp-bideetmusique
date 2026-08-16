@@ -5,7 +5,7 @@
 import { z } from "zod";
 import type { BideEtMusiqueClient } from "../bideetmusique/client.js";
 import { strictInput } from "./arguments.js";
-import { ok, toToolError } from "./shared.js";
+import { noteIfTextIsCut, ok, toToolError } from "./shared.js";
 import type { ToolResult } from "./shared.js";
 
 export const getArtistDescription = [
@@ -25,7 +25,10 @@ export const getArtistInput = strictInput({
   artist_id: z
     .string()
     .max(20)
-    .describe("The artist id returned by search_songs or get_song, digits only, for example '290'."),
+    .regex(/^\d+$/)
+    .describe(
+      "The artist id returned by search_songs or get_song, digits only, for example '290'.",
+    ),
   limit: z
     .number()
     .int()
@@ -72,7 +75,9 @@ export const getArtistOutputShape = {
       programming: z
         .string()
         .nullable()
-        .describe("How the song sits in the station's programming, in the site's own French wording."),
+        .describe(
+          "How the song sits in the station's programming, in the site's own French wording.",
+        ),
       image_url: z.string().nullable(),
       thumbnail_url: z.string().nullable(),
     }),
@@ -175,7 +180,10 @@ export async function runGetArtist(
         `${index + 1}. ${entry.year ?? "----"} · ${entry.title} · id: ${entry.song_id}`,
     );
 
-    return ok(structured, [...header, ...list, data.url].join("\n"), notes);
+    const body = [...header, ...list, data.url].join("\n");
+    noteIfTextIsCut(body, notes);
+
+    return ok(structured, body, notes);
   } catch (error) {
     return toToolError(error);
   }

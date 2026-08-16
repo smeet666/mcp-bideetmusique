@@ -82,6 +82,11 @@ export function songUrl(id: string): string {
   return `${BASE_URL}/song/${id}.html`;
 }
 
+/** The feed of records the collection has just catalogued. */
+export function newSongsFeedUrl(): string {
+  return `${BASE_URL}/new_song.rss`;
+}
+
 /** An artist id as the site numbers them. */
 export const ARTIST_ID = /^\d+$/;
 

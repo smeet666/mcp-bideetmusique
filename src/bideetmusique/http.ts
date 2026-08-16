@@ -15,6 +15,7 @@ import {
   upstreamError,
 } from "../errors.js";
 import { decodeHtml } from "./html.js";
+import { isBideHost } from "./urls.js";
 import { RateLimiter, sleep } from "./rateLimiter.js";
 
 const BACKOFF_BASE_MS = 3000;
@@ -23,6 +24,25 @@ const BACKOFF_MAX_MS = 30_000;
 
 /** A real page from this site weighs several kilobytes of markup. */
 const MIN_PLAUSIBLE_HTML = 1500;
+
+/**
+ * The most this client will read from one answer.
+ *
+ * The heaviest page the site publishes is its index of every artist, at about
+ * 1.8 MB. Twice that leaves room for the site to grow while keeping a body that
+ * never ends from filling memory: the parsers walk a page several times, so the
+ * cost of holding one is a multiple of its size.
+ */
+const MAX_BODY_BYTES = 4_000_000;
+
+/**
+ * A document that closed its root element arrived whole, however short it is.
+ *
+ * The site serves pages and it serves feeds, and a feed of a few entries is
+ * shorter than any page while being exactly what was asked for. Judging both by
+ * length alone reports a complete feed as a truncated page.
+ */
+const CLOSES_ITS_ROOT = /<\/(?:html|rss)>/i;
 
 /** Exponential backoff with jitter, so parallel clients do not resynchronise. */
 export function backoffDelay(attempt: number, random: () => number = Math.random): number {
@@ -92,20 +112,37 @@ export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
         // A stub may leave `url` empty, which is not an address to report.
         finalUrl = response.url || url;
         retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
-        body = decodeHtml(await response.arrayBuffer(), response.headers.get("content-type"));
+        body = decodeHtml(await readBounded(response, url), response.headers.get("content-type"));
       } catch (error) {
         lastError = asTransportError(error, url);
         logger.debug(`${lastError.code} for ${url}: ${lastError.message}`);
         continue;
       }
 
-      if (status === 429 || status === 503 || status === 403) {
+      // Redirects are followed, so the address the request ended at is the one
+      // the body came from. A body read from anywhere else would enter an answer
+      // that names this site as its source. Asking again would land in the same
+      // place, so this ends the read rather than costing three more requests.
+      if (!isBideHost(finalUrl)) {
+        throw parseFailure(url, `an address off the site, ${finalUrl}`);
+      }
+
+      if (status === 429 || status === 503) {
         limiter.penalize();
         // A server that says when to come back knows better than our own guess.
         askedWaitMs = retryAfterMs;
         lastError = rateLimited(url, retryAfterMs ?? backoffDelay(attempt));
         logger.info(`rate limited on ${url}, interval now ${limiter.currentIntervalMs}ms`);
         continue;
+      }
+      // A 403 refuses rather than asking for patience: three more requests
+      // would be three more refusals, and the site is run by volunteers.
+      if (status === 403) {
+        throw new BideEtMusiqueError("rate_limited", `Bide & Musique refused to serve ${url}.`, {
+          url,
+          status,
+          hint: "The site declined this request rather than asking to slow down.",
+        });
       }
       if (status === 404) throw notFound(url, "that address");
       if (status >= 500) {
@@ -115,7 +152,7 @@ export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
       if (status >= 400) throw upstreamError(url, status);
 
       const trimmed = body.trim();
-      if (trimmed.length < MIN_PLAUSIBLE_HTML && !/<\/html>/i.test(trimmed)) {
+      if (trimmed.length < MIN_PLAUSIBLE_HTML && !CLOSES_ITS_ROOT.test(trimmed)) {
         // A 200 carrying too few bytes to be a page is worth another attempt,
         // since a site under load answers that way. What it is not is evidence
         // of rate limiting: the exchange succeeded and the body was unreadable,
@@ -133,6 +170,48 @@ export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
 
     throw lastError ?? new BideEtMusiqueError("network_error", `Could not fetch ${url}.`, { url });
   });
+}
+
+/**
+ * The body, refused past a size no page of this site reaches.
+ *
+ * Reading in chunks rather than in one call is what makes the limit a limit: an
+ * answer that never ends is dropped at the threshold instead of being held
+ * whole first and measured after.
+ */
+async function readBounded(response: Response, url: string): Promise<Uint8Array> {
+  const announced = Number(response.headers.get("content-length") ?? "");
+  if (Number.isFinite(announced) && announced > MAX_BODY_BYTES) {
+    throw parseFailure(url, `an answer of ${announced} bytes, past what this client reads`);
+  }
+
+  if (!response.body) return new Uint8Array(await response.arrayBuffer());
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let read = 0;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      read += value.byteLength;
+      if (read > MAX_BODY_BYTES) {
+        throw parseFailure(url, `an answer past the ${MAX_BODY_BYTES} bytes this client reads`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const body = new Uint8Array(read);
+  let at = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return body;
 }
 
 /** `Retry-After` carries either seconds or an HTTP date. */

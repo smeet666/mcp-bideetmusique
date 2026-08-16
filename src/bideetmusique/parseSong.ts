@@ -3,14 +3,11 @@
  *
  * Two readings live here. `parseSongPage` takes the few fields a search row
  * carries, for the case where a search matching a single song is answered with
- * that song's page. `parseSongRecord` reads the record itself.
+ * that song's page. `parseSongRecord` reads the record itself, including the
+ * transcription its page publishes.
  *
- * Neither reads the lyrics. Bide & Musique prints transcriptions its members
- * typed, under its own notice saying it awaits permission from the rights
- * holders, so this server states that the page has some, who typed them and
- * where they are, and repeats no line of them on any path. The per-song audio
- * stream the page plays is left alone for the same reason: linking a page is not
- * handing out the recording.
+ * The per-song audio stream the page plays is left alone: the address of a
+ * stream is the recording, and this server reads a catalogue.
  */
 
 import { parseFailure } from "../errors.js";
@@ -70,7 +67,7 @@ const COMMENTS = /(\d+)\s+commentaires?/i;
 const ARCHIVED = /dont\s+(\d+)\s+archiv/i;
 
 /**
- * The lyrics block, located so it can be described and left unread.
+ * The heading that opens the lyrics block, which is what says a page has one.
  *
  * The heading is the word on its own or the head of a longer one, so a title
  * naming the song after it still marks the block. Two guards keep it from
@@ -88,6 +85,23 @@ const LYRICS_HEADING = /<(?:p|h[1-6]|div|td)\b[^>]*>\s*Paroles\b[^<:]{0,40}</i;
  */
 const TRANSCRIBER = /Transcripteur\s*:\s*(?:<[^>]*>\s*)?([^<]*)/i;
 const RIGHTS_NOTICE = /en attente d'une autorisation/i;
+
+/** The cell the transcription itself sits in. */
+const LYRICS_CELL = /<td[^>]*\bclass="paroles"[^>]*>/i;
+/**
+ * Where that cell stops.
+ *
+ * The site closes it with `</td>` under a record it credits a transcriber for
+ * and opens the next row with `</tr>` alone under one it credits none for.
+ * Waiting for `</td>` therefore runs past the cell on the second kind and
+ * carries the rows below it into the answer.
+ */
+const CELL_END = /<\/t[dr]\b[^>]*>/i;
+/** The credit line, which closes the transcription rather than belonging to it. */
+const TRANSCRIBER_MARKER = /Transcripteur\s*:/i;
+const LINE_BREAK = /<br\s*\/?>/gi;
+/** Enough for a transcription, and a stop for a cell the site never closes. */
+const MAX_LYRICS_LENGTH = 20_000;
 
 export function parseSongPage(html: string, url: string, id: string): SongSummary {
   const heading = HEADING.exec(html);
@@ -147,9 +161,8 @@ export function parseSongRecord(html: string, url: string, id: string): Song {
     throw parseFailure(url, "a record naming neither a title nor an artist");
   }
 
-  // The lyrics sit below the record. Everything read for the fields stops before
-  // them, and the counters below are read as numbers from text that is never
-  // kept.
+  // The lyrics sit below the record, so everything read for the fields stops at
+  // their heading: a word of a song must never reach a field of the record.
   const lyricsAt = html.search(LYRICS_HEADING);
   const record = lyricsAt > 0 ? html.slice(0, lyricsAt) : html;
   const plainRecord = textOf(record);
@@ -202,9 +215,10 @@ export function parseSongRecord(html: string, url: string, id: string): Song {
     addedOn: readAddedOn(record),
     top50: readTop50(record),
     favourites: readFavourites(plainRecord),
-    // The comment count sits below the lyrics, so it is read from the whole
-    // page. Only the number is kept.
-    comments: readComments(html),
+    // The comment count sits below the transcription, so the page is read
+    // whole with the transcription cut out of it: a line someone sang reading
+    // "3 commentaires" is a word of a song, never the counter.
+    comments: readComments(withoutTranscription(html, lyricsAt)),
     lyrics: readLyrics(html, lyricsAt, url),
   };
 }
@@ -267,6 +281,27 @@ function readNumber(pattern: RegExp, text: string): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
+/**
+ * The page with the transcription taken out of it.
+ *
+ * What sits below the cell belongs to the record and has to be read, and what
+ * sits inside it is a song. Cutting the cell is what lets one page serve both
+ * readings without either borrowing from the other.
+ */
+function withoutTranscription(html: string, lyricsAt: number): string {
+  if (lyricsAt < 0) return html;
+
+  const block = html.slice(lyricsAt, lyricsAt + MAX_LYRICS_LENGTH);
+  const opening = LYRICS_CELL.exec(block);
+  if (!opening) return html;
+
+  const from = lyricsAt + opening.index + opening[0].length;
+  const end = CELL_END.exec(html.slice(from, from + MAX_LYRICS_LENGTH));
+  if (!end) return html.slice(0, from);
+
+  return html.slice(0, from) + html.slice(from + end.index);
+}
+
 function readComments(html: string): CommentCount | null {
   const plain = textOf(html);
   const count = readNumber(COMMENTS, plain);
@@ -275,24 +310,57 @@ function readComments(html: string): CommentCount | null {
 }
 
 /**
- * What the page says about its lyrics.
+ * The lyrics block: the transcription, who typed it, and the notice under it.
  *
- * The block is located to be described and then left alone: nothing below the
- * heading is read into the result beyond the transcriber's name and whether the
- * site printed its notice.
+ * The credit and the notice are read from the block as a whole, and the
+ * transcription from the cell alone, which is what keeps the rows printed below
+ * the cell out of it.
  */
 function readLyrics(html: string, lyricsAt: number, url: string): LyricsInfo {
   if (lyricsAt < 0) {
-    return { available: false, transcriber: null, rightsNotice: false, url };
+    return { available: false, text: null, transcriber: null, rightsNotice: false, url };
   }
 
-  const block = html.slice(lyricsAt, lyricsAt + 20_000);
+  const block = html.slice(lyricsAt, lyricsAt + MAX_LYRICS_LENGTH);
   const transcriber = textOf(TRANSCRIBER.exec(block)?.[1] ?? "");
 
   return {
     available: true,
+    text: readLyricsText(block),
     transcriber: transcriber === "" ? null : transcriber,
     rightsNotice: RIGHTS_NOTICE.test(textOf(block)),
     url,
   };
+}
+
+/**
+ * The transcription as the page prints it, one published line per line.
+ *
+ * Each line is read on its own so the breaks the site marks up survive, and the
+ * credit line closing the cell is dropped: it says who typed the words rather
+ * than being one of them.
+ */
+function readLyricsText(block: string): string | null {
+  const opening = LYRICS_CELL.exec(block);
+  if (!opening) return null;
+
+  const afterOpening = block.slice(opening.index + opening[0].length);
+  const end = CELL_END.exec(afterOpening);
+  // A cell running past the window has no end in view, so what fits is a piece
+  // of a transcription. Returning it would publish a cut one under a field
+  // saying the words are as published.
+  if (!end) return null;
+  const cell = afterOpening.slice(0, end.index);
+
+  const credit = TRANSCRIBER_MARKER.exec(cell);
+  const published = credit ? cell.slice(0, credit.index) : cell;
+
+  // Only `<br>` breaks a line. The newlines the markup itself carries sit
+  // inside a line and are folded away with the rest of its whitespace.
+  const lines = published.split(LINE_BREAK).map(textOf);
+  while (lines.length > 0 && lines[0] === "") lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+
+  const text = lines.join("\n");
+  return text === "" ? null : text;
 }

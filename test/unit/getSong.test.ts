@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 import { BideEtMusiqueClient } from "../../src/bideetmusique/client.js";
 import { parseSongRecord } from "../../src/bideetmusique/parseSong.js";
 import { loadConfig } from "../../src/config.js";
-import { runGetSong } from "../../src/tools/getSong.js";
+import { getSongInput, runGetSong } from "../../src/tools/getSong.js";
 import type { Song } from "../../src/types.js";
 import {
   clientServingHtml,
@@ -26,215 +26,16 @@ import {
   textOfResult,
 } from "./helpers.js";
 import type { ToolResult } from "../../src/tools/shared.js";
-
-const SONG_ID = "1734";
-const SONG_URL = `https://www.bide-et-musique.com/song/${SONG_ID}.html`;
-
-/** The per-song audio endpoint. It sits in every page built here and must never
- * reach the answer, so any field quoting it fails a test rather than shipping. */
-const STREAM_PATH = `/stream_${SONG_ID}.php`;
-
-/** A sentence of the lyrics block that is not a lyric: the rights notice the
- * site prints under the words. It stands in for the block's content, so an
- * output that swallowed the block shows up as this sentence escaping. */
-const RIGHTS_NOTICE =
-  "Ces paroles sont publiées en attente d'une autorisation des ayants droit.";
-
-const LYRICS_HEADING = "Paroles de la chanson";
-
-// ---------------------------------------------------------------------------
-// The markup the site serves, as far as the contract describes it.
-// ---------------------------------------------------------------------------
-
-interface Comments {
-  count: number;
-  archived?: number | null;
-}
-
-interface LyricsBlock {
-  transcriber?: string | null;
-  rightsNotice?: boolean;
-}
-
-interface RecordOptions {
-  id?: string;
-  artistId?: string;
-  artist?: string;
-  title?: string;
-  /** Replaces the whole heading paragraph; `null` removes it. */
-  heading?: string | null;
-  writers?: string[];
-  duration?: string | null;
-  year?: string | null;
-  labels?: string[];
-  reference?: string | null;
-  presentation?: string | null;
-  sleeveCredits?: string[];
-  performer?: string | null;
-  addedOn?: string | null;
-  seeAlso?: Array<{ id: string; name: string }>;
-  top50?: string | null;
-  favourites?: number | null;
-  comments?: Comments | null;
-  sleeve?: boolean;
-  lyrics?: LyricsBlock | null;
-  audio?: boolean;
-}
-
-function anchor(href: string, text: string): string {
-  return `<a href="${href}">${text}</a>`;
-}
-
-function field(label: string, value: string): string {
-  return `<tr><td class="informations">${label} : <span class="txtred2">${value}</span></td></tr>`;
-}
-
-/**
- * A record page. Every optional field is left out when its option is `null` or
- * an empty array, which is how the site prints a record it knows less about.
- *
- * The contract fixes the markup of the heading, the `informations` cells, the
- * `songinfos` block and the sleeve. It fixes none for the favourite count, the
- * comment count or the lyrics block, so those three are reconstructed from the
- * wording it quotes. A test that fails only on one of them is a disagreement
- * about where the value sits on the page, and the page is what settles it.
- */
-function recordPage(options: RecordOptions = {}): string {
-  const {
-    id = SONG_ID,
-    artistId = "8842",
-    artist = "Les Vaillants du Dimanche",
-    title = "Le Petit Bal des Ampoules",
-    writers = ["Odette Vanderplaen", "Régis Bouchonnet"],
-    duration = "4 m 16 s",
-    year = "1978",
-    labels = ["Disques Bouton d'Or"],
-    reference = "BO 45-118",
-    presentation = null,
-    sleeveCredits = [],
-    performer = null,
-    addedOn = "21/01/2002",
-    seeAlso = [],
-    top50 = null,
-    favourites = null,
-    comments = null,
-    sleeve = true,
-    lyrics = null,
-    audio = true,
-  } = options;
-
-  // The artist link carries markup inside its title attribute, so an opening
-  // tag here does not end at the first `>`.
-  const headingParagraph =
-    options.heading === null
-      ? ""
-      : (options.heading ??
-        `<p class="titrerosebg"><a href="/artist/${artistId}.html" title="Consulter la fiche de <b>${artist}</b>">${artist}</a> - ${title}</p>`);
-
-  const rows: string[] = [];
-  if (performer) rows.push(field("Interprète", anchor("/artist/9001.html", performer)));
-  if (writers.length > 0) {
-    rows.push(
-      field(
-        "Auteurs compositeurs",
-        writers.map((name, index) => anchor(`/auteur/${400 + index}.html`, name)).join(" - "),
-      ),
-    );
-  }
-  if (year) rows.push(field("Année", anchor(`/annee/${year}.html`, year)));
-  if (duration) rows.push(field("Durée", duration));
-  if (labels.length > 0) {
-    rows.push(
-      field(
-        "Label",
-        labels.map((name, index) => anchor(`/label/${700 + index}.html`, name)).join(" - "),
-      ),
-    );
-  }
-  if (reference) rows.push(field("Référence", reference));
-  if (presentation) rows.push(field("Présentation", presentation));
-  if (sleeveCredits.length > 0) {
-    rows.push(
-      field(
-        "Pochette",
-        sleeveCredits.map((name, index) => anchor(`/pochette/${900 + index}.html`, name)).join(" - "),
-      ),
-    );
-  }
-
-  const infos: string[] = [];
-  if (addedOn) infos.push(`<p>Ajouté le ${addedOn}</p>`);
-  if (seeAlso.length > 0) {
-    infos.push(
-      `<p>Voir aussi : ${seeAlso
-        .map((entry) => anchor(`/artist/${entry.id}.html`, entry.name))
-        .join(", ")}</p>`,
-    );
-  }
-  if (top50) infos.push(`<p>Au TOP 50 de B&amp;M : ${top50}</p>`);
-  if (favourites !== null && favourites !== undefined) {
-    infos.push(
-      `<p class="favoris">Cette chanson est dans les favoris de ${anchor(
-        `/song/${id}/fans.html`,
-        String(favourites),
-      )} personnes</p>`,
-    );
-  }
-  if (comments) {
-    const archived =
-      comments.archived === null || comments.archived === undefined
-        ? ""
-        : `, dont ${comments.archived} archivé${comments.archived > 1 ? "s" : ""}`;
-    infos.push(
-      `<p class="commentaires">${anchor(`/song/${id}/commentaires.html`, `${comments.count} commentaire${comments.count > 1 ? "s" : ""}`)}${archived}</p>`,
-    );
-  }
-
-  const pochette = sleeve
-    ? `<div class="pochette-fiche"><a href="/show-image.html?I=/images/pochettes/${id}.jpg&amp;T=pochette"><img src="/images/thumb200/${id}.jpg" alt="Pochette" /></a></div>`
-    : "";
-
-  const player = audio
-    ? `<audio controls preload="none"><source src="${STREAM_PATH}" type="audio/mpeg" />Votre navigateur ne lit pas l'audio.</audio>`
-    : "";
-
-  const lyricsBlock = lyrics
-    ? [
-        `<div id="parolesbloc">`,
-        `<p class="titrebleubg">${LYRICS_HEADING}</p>`,
-        lyrics.rightsNotice === false ? "" : `<p class="txtsmall">${RIGHTS_NOTICE}</p>`,
-        lyrics.transcriber ? `<p class="txtsmall">Transcripteur : ${lyrics.transcriber}</p>` : "",
-        `</div>`,
-      ]
-        .filter(Boolean)
-        .join("\n")
-    : "";
-
-  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN">
-<html><head>
-<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
-<title>${title} - Bide et Musique</title>
-</head>
-<body>
-<div id="entete"><a href="/index.html">Accueil</a></div>
-<div id="principal">
-${headingParagraph}
-${pochette}
-${player}
-<table class="bmtable">
-${rows.join("\n")}
-</table>
-<div id="songinfos">
-<p class="titrebleubg">Plus d'infos</p>
-${infos.join("\n")}
-</div>
-${lyricsBlock}
-</div>
-<div id="footer"><p>Bide &amp; Musique</p></div>
-</body>
-</html>
-`;
-}
+import type { RecordOptions } from "../builders/song.js";
+import {
+  DEFAULT_LYRICS_TEXT,
+  LYRICS_HEADING,
+  RIGHTS_NOTICE,
+  SONG_ID,
+  SONG_URL,
+  STREAM_PATH,
+  recordPage,
+} from "../builders/song.js";
 
 /** A page carrying nothing but the frame: no heading, no fields. */
 function pageWithoutHeading(): string {
@@ -291,7 +92,10 @@ function parse(options: RecordOptions = {}): Song {
 }
 
 async function run(options: RecordOptions = {}): Promise<ToolResult> {
-  return runGetSong(clientServingHtml(recordPage(options)), { song_id: SONG_ID });
+  return runGetSong(clientServingHtml(recordPage(options)), {
+    song_id: SONG_ID,
+    include_lyrics: true,
+  });
 }
 
 /** Every string the payload holds, at any depth, for the two never-published rules. */
@@ -381,9 +185,7 @@ describe("rule 1 — title, artist and duration always come back, everything els
     expect(song.creditedPerformer).toBe("Mademoiselle Solange");
     expect(song.year).toBe(1978);
     expect(song.catalogueReference).toBe("BO 45-118");
-    expect(song.presentation).toBe(
-      "Une curiosité pressée à Bruxelles pour un club de supporters.",
-    );
+    expect(song.presentation).toBe("Une curiosité pressée à Bruxelles pour un club de supporters.");
     expect(song.sleeveCredits).toEqual(["Studio Grandjean", "Photo: R. Marchal"]);
     expect(song.seeAlso.map((entry) => entry.name)).toEqual(["Les Vaillants du Samedi"]);
     expect(song.addedOn).toBe("2002-01-21");
@@ -662,7 +464,11 @@ describe("rule 10 — a missing counter is not a zero, and the notes say so", ()
     expect(payload.notes.some((note) => /favori|favourite/i.test(note))).toBe(true);
     expect(payload.notes.some((note) => /commentaire|comment/i.test(note))).toBe(true);
     expect(
-      payload.notes.some((note) => /ne (les )?(publie|affiche|imprime)|prints? (no|none|nothing)|pas de compteur|no counter|absen/i.test(note)),
+      payload.notes.some((note) =>
+        /ne (les )?(publie|affiche|imprime)|prints? (no|none|nothing)|pas de compteur|no counter|absen/i.test(
+          note,
+        ),
+      ),
     ).toBe(true);
   });
 
@@ -687,7 +493,7 @@ describe("rule 10 — a missing counter is not a zero, and the notes say so", ()
   });
 });
 
-describe("rule 11 — lyrics are announced, never carried", () => {
+describe("the lyrics a record page carries", () => {
   it("announces the block, its transcriber and its rights notice", () => {
     const song = parse({ lyrics: { transcriber: "Bernard T." } });
 
@@ -697,10 +503,76 @@ describe("rule 11 — lyrics are announced, never carried", () => {
     expect(song.lyrics.url).toBe(SONG_URL);
   });
 
+  it("reads the words as published, one line per line", () => {
+    const song = parse({ lyrics: { transcriber: "Bernard T." } });
+
+    expect(song.lyrics.text).toBe(DEFAULT_LYRICS_TEXT);
+    expect(song.lyrics.text).not.toMatch(/<[a-z/][^>]*>/i);
+  });
+
+  it("carries no markup through, whatever the cell holds", () => {
+    const song = parse({
+      lyrics: {
+        lines: [
+          "Une ligne <b>appuyée</b> par le site",
+          '<span class="txtred">Une autre dans sa balise</span>',
+          "Un chevron publié&nbsp;: &lt;b&gt;",
+        ],
+      },
+    });
+
+    expect(song.lyrics.text).toBe(
+      [
+        "Une ligne appuyée par le site",
+        "Une autre dans sa balise",
+        // The site escaped this one, so it is text it published rather than
+        // markup, and it survives as the reader saw it.
+        "Un chevron publié\u00a0: <b>",
+      ].join("\n"),
+    );
+  });
+
+  it("stops before the line naming who typed them", () => {
+    const song = parse({ lyrics: { transcriber: "Bernard T.", lines: ["Une seule ligne"] } });
+
+    expect(song.lyrics.text).toBe("Une seule ligne");
+    expect(song.lyrics.transcriber).toBe("Bernard T.");
+  });
+
+  it("stops at the end of the cell the site never closed", () => {
+    const song = parse({
+      lyrics: { transcriber: null, unterminated: true, lines: ["Une seule ligne"] },
+    });
+
+    expect(song.lyrics.text).toBe("Une seule ligne");
+    expect(song.lyrics.text).not.toContain(RIGHTS_NOTICE);
+  });
+
+  it("keeps the blank line the site prints between two verses", () => {
+    const song = parse({ lyrics: { lines: ["Premier couplet", "", "Second couplet"] } });
+
+    expect(song.lyrics.text).toBe("Premier couplet\n\nSecond couplet");
+  });
+
+  it("repeats a marker the site printed in place of the words", () => {
+    const song = parse({ lyrics: { transcriber: null, lines: ["(instrumental)"] } });
+
+    expect(song.lyrics.available).toBe(true);
+    expect(song.lyrics.text).toBe("(instrumental)");
+  });
+
+  it("says the words are unreadable rather than absent when the cell holds nothing", () => {
+    const song = parse({ lyrics: { transcriber: null, lines: [] } });
+
+    expect(song.lyrics.available).toBe(true);
+    expect(song.lyrics.text).toBeNull();
+  });
+
   it("says the block is absent for the record whose page carries none", () => {
     const song = parse({ lyrics: null });
 
     expect(song.lyrics.available).toBe(false);
+    expect(song.lyrics.text).toBeNull();
     expect(song.lyrics.transcriber).toBeNull();
     expect(song.lyrics.rightsNotice).toBe(false);
     expect(song.lyrics.url).toBe(SONG_URL);
@@ -713,7 +585,7 @@ describe("rule 11 — lyrics are announced, never carried", () => {
     expect(song.lyrics.transcriber).toBeNull();
   });
 
-  it("carries no content of the lyrics block in any parsed field", () => {
+  it("keeps the heading, the notice and the credit out of every parsed field", () => {
     const song = parse({ lyrics: { transcriber: "Bernard T." } });
 
     for (const value of allStrings(song)) {
@@ -723,7 +595,7 @@ describe("rule 11 — lyrics are announced, never carried", () => {
     }
   });
 
-  it("carries no content of the lyrics block in the structured answer or the text", async () => {
+  it("keeps them out of the structured answer and out of the text", async () => {
     const result = await run({ lyrics: { transcriber: "Bernard T." } });
     const payload = songPayload(result);
 
@@ -774,7 +646,10 @@ describe("rule 12 — the audio stream address is never published", () => {
 describe("rule 13 — a page that is not a record is a parse failure", () => {
   it("fails rather than returning a record full of nulls when the page has no heading", async () => {
     const failure = await failureOf(
-      runGetSong(clientServingHtml(pageWithoutHeading()), { song_id: SONG_ID }),
+      runGetSong(clientServingHtml(pageWithoutHeading()), {
+        song_id: SONG_ID,
+        include_lyrics: true,
+      }),
     );
 
     expect(failure.code).toBe("parse_failure");
@@ -782,7 +657,7 @@ describe("rule 13 — a page that is not a record is a parse failure", () => {
 
   it("fails on an empty body", async () => {
     const failure = await failureOf(
-      runGetSong(clientServingHtml(emptyBodyPage()), { song_id: SONG_ID }),
+      runGetSong(clientServingHtml(emptyBodyPage()), { song_id: SONG_ID, include_lyrics: true }),
     );
 
     expect(failure.code).toBe("parse_failure");
@@ -797,7 +672,9 @@ describe("rule 13 — a page that is not a record is a parse failure", () => {
 
 describe("rule 14 — a song id is digits, and 404 is not a parse failure", () => {
   it("refuses a song id of letters before any request goes out", async () => {
-    const failure = await failureOf(runGetSong(refusingClient(), { song_id: "abc" }));
+    const failure = await failureOf(
+      runGetSong(refusingClient(), { song_id: "abc", include_lyrics: true }),
+    );
 
     expect(failure.code).toBe("invalid_input");
     // The refusal names the argument it is about; its exact spelling is the
@@ -807,7 +684,9 @@ describe("rule 14 — a song id is digits, and 404 is not a parse failure", () =
 
   it("refuses an id carrying a space, a sign or a suffix, before any request", async () => {
     for (const songId of ["17 34", "-5", "1734a", "17.34", ""]) {
-      const failure = await failureOf(runGetSong(refusingClient(), { song_id: songId }));
+      const failure = await failureOf(
+        runGetSong(refusingClient(), { song_id: songId, include_lyrics: true }),
+      );
       expect(failure.code).toBe("invalid_input");
     }
   });
@@ -819,7 +698,9 @@ describe("rule 14 — a song id is digits, and 404 is not a parse failure", () =
   });
 
   it("reports a record the site answers with 404 as not_found", async () => {
-    const failure = await failureOf(runGetSong(clientAnswering404(), { song_id: "999999" }));
+    const failure = await failureOf(
+      runGetSong(clientAnswering404(), { song_id: "999999", include_lyrics: true }),
+    );
 
     expect(failure.code).toBe("not_found");
     expect(failure.code).not.toBe("parse_failure");
@@ -853,5 +734,119 @@ describe("rule 15 — absent fields are stated in the notes", () => {
     const payload = songPayload(await run());
 
     expect(payload.notes.some((note) => /label/i.test(note))).toBe(false);
+  });
+});
+
+/**
+ * A transcription longer than this server reads.
+ *
+ * The cell is located inside a window on the page, and a cell that runs past it
+ * has no readable end. Returning what fits would publish a cut transcription
+ * under a field that says the words are as published.
+ */
+describe("a transcription the reader cannot see the end of", () => {
+  it("says nothing rather than passing a cut transcription off as the whole", () => {
+    const enormous = Array.from({ length: 900 }, (_, index) => `Ligne ${index} du couplet`);
+    const song = parse({ lyrics: { transcriber: null, lines: enormous, unterminated: true } });
+
+    expect(song.lyrics.available).toBe(true);
+    expect(song.lyrics.text).toBeNull();
+  });
+
+  it("reads a long transcription whose end is in view", () => {
+    const long = Array.from({ length: 60 }, (_, index) => `Ligne ${index}`);
+    const song = parse({ lyrics: { transcriber: null, lines: long } });
+
+    expect(song.lyrics.text?.split("\n")).toHaveLength(60);
+  });
+});
+
+/**
+ * Reading a record without paying for the song.
+ *
+ * A transcription runs to a few thousand characters, and a question about a
+ * year has no use for it. What the page carries is reported either way, so
+ * leaving the words out never reads as a page that has none.
+ */
+describe("asking for the record without the words", () => {
+  it("leaves the words out while still reporting that the page has some", async () => {
+    const result = await runGetSong(clientServingHtml(recordPage({ lyrics: {} })), {
+      song_id: SONG_ID,
+      include_lyrics: false,
+    });
+    const payload = songPayload(result);
+    const lyrics = payload.lyrics as { available: boolean; text: string | null };
+
+    expect(lyrics.available).toBe(true);
+    expect(lyrics.text).toBeNull();
+    expect((payload.notes as string[]).join(" ")).toContain("include_lyrics");
+  });
+
+  it("keeps the words out of the text block as well", async () => {
+    const result = await runGetSong(clientServingHtml(recordPage({ lyrics: {} })), {
+      song_id: SONG_ID,
+      include_lyrics: false,
+    });
+
+    expect(textOfResult(result)).not.toContain("carrousel");
+  });
+
+  it("returns them when asked, which is what it does by default", () => {
+    expect(getSongInput.parse({ song_id: "1734" })).toEqual({
+      song_id: "1734",
+      include_lyrics: true,
+    });
+  });
+
+  it("refuses a song id the schema can see is not one", () => {
+    expect(getSongInput.safeParse({ song_id: "abc" }).success).toBe(false);
+    expect(getSongInput.safeParse({ song_id: "17 34" }).success).toBe(false);
+    expect(getSongInput.safeParse({ song_id: "1734" }).success).toBe(true);
+  });
+});
+
+/**
+ * Two guards on where the record stops and the song starts.
+ *
+ * A record credits its writing as "Paroles : someone", in the same word the
+ * lyrics heading uses, and a transcription can hold a line shaped like a field
+ * or like a counter. Reading either as the other puts a word of a song into the
+ * record, or a line of the record into the song.
+ */
+describe("telling the record apart from the song", () => {
+  it("takes a writing credit for a field rather than for the lyrics heading", () => {
+    const song = parse({ writers: ["Paroles : Jean-Pierre Lang"], lyrics: null });
+
+    expect(song.lyrics.available).toBe(false);
+    expect(song.writers).toContain("Paroles : Jean-Pierre Lang");
+  });
+
+  it("reads no field of the record out of a line someone sang", () => {
+    const song = parse({
+      addedOn: null,
+      favourites: null,
+      comments: null,
+      top50: null,
+      lyrics: {
+        lines: [
+          "Ajouté le 01/01/1970",
+          "12 personnes ont cette chanson",
+          "Classé 99 fois dans les 50 premiers",
+          "3 commentaires",
+        ],
+      },
+    });
+
+    expect(song.addedOn).toBeNull();
+    expect(song.favourites).toBeNull();
+    expect(song.comments).toBeNull();
+    expect(song.top50).toBeNull();
+  });
+
+  it("says a page prints no notice under the words when it prints none", () => {
+    const song = parse({ lyrics: { rightsNotice: false } });
+
+    expect(song.lyrics.available).toBe(true);
+    expect(song.lyrics.rightsNotice).toBe(false);
   });
 });

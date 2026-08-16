@@ -9,7 +9,7 @@ import type { SearchType } from "../bideetmusique/urls.js";
 import { SEARCH_TYPE_LABELS, YEAR_QUERY } from "../bideetmusique/urls.js";
 import { invalidInput } from "../errors.js";
 import { strictInput } from "./arguments.js";
-import { ok, toToolError } from "./shared.js";
+import { noteIfTextIsCut, ok, toToolError } from "./shared.js";
 import type { ToolResult } from "./shared.js";
 
 export const searchSongsDescription = [
@@ -25,8 +25,7 @@ export const searchSongsDescription = [
   "instead of filtering on it, and the ranges its own form documents return nothing. To combine a",
   "year with words, search the words on their own axis and read each record's year from its page.",
   "Use 'lyrics' to find a song from a line someone remembers. It answers with the songs whose words",
-  "match; the words themselves stay on the site, which publishes them while awaiting permission from",
-  "the rights holders.",
+  "match, without showing what matched; read the words themselves with get_song on the id.",
   "Several keywords are combined with AND, each matched inside words, so every extra word narrows the",
   "search and never widens it. Quoting a phrase returns nothing, whatever the site's own form says.",
   "Results carry the song id, the artist and the page to read, which is where the song's own record",
@@ -49,7 +48,10 @@ export const searchSongsInput = strictInput({
     .enum(["performer", "title", "writer", "lyrics", "label", "year"])
     .describe(
       "Which axis to search: 'performer' for the artist credited on the record, 'title' for the " +
-        "name of the song, 'writer' for who wrote or composed it, 'lyrics' for the words sung in it.",
+        "name of the song, 'writer' for who wrote or composed it, 'lyrics' for the words sung in " +
+        "it, 'label' for the label it came out on, 'year' for the year printed on it. The 'year' " +
+        "axis takes one four-digit year and nothing else: the site drops any other word there " +
+        "instead of filtering on it.",
     ),
   page: z
     .number()
@@ -192,7 +194,10 @@ function carriedBy(texts: string[], query: string): Carried {
  * be inventing it.
  */
 const MATCHED_FIELD: Partial<
-  Record<SearchType, { of: (row: { title: string; artist: { name: string } }) => string; noun: string }>
+  Record<
+    SearchType,
+    { of: (row: { title: string; artist: { name: string } }) => string; noun: string }
+  >
 > = {
   title: { of: (row) => row.title, noun: "title" },
   performer: { of: (row) => row.artist.name, noun: "performer" },
@@ -218,7 +223,7 @@ export async function runSearchSongs(
     if (!query) {
       throw invalidInput(
         "'query' cannot be empty.",
-        "Give a performer or a song title, for example query=\"Pierre Bachelet\" with " +
+        'Give a performer or a song title, for example query="Pierre Bachelet" with ' +
           'search_type="performer".',
       );
     }
@@ -369,12 +374,14 @@ export async function runSearchSongs(
         : `Aucun morceau pour "${query}" (${SEARCH_TYPE_LABELS[args.search_type]}).`;
     const list = results
       .map(
-        (song, index) =>
-          `${index + 1}. ${song.artist.name} · ${song.title} · id: ${song.song_id}`,
+        (song, index) => `${index + 1}. ${song.artist.name} · ${song.title} · id: ${song.song_id}`,
       )
       .join("\n");
 
-    return ok(structured, list ? `${header}\n${list}` : header, notes);
+    const body = list ? `${header}\n${list}` : header;
+    noteIfTextIsCut(body, notes);
+
+    return ok(structured, body, notes);
   } catch (error) {
     return toToolError(error);
   }

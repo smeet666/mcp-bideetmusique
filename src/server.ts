@@ -18,12 +18,25 @@ import {
 } from "./tools/getArtist.js";
 import type { GetArtistArgs } from "./tools/getArtist.js";
 import {
+  getRandomSongDescription,
+  getRandomSongInput,
+  getRandomSongOutputShape,
+  runGetRandomSong,
+} from "./tools/getRandomSong.js";
+import {
   getSongDescription,
   getSongInput,
   getSongOutputShape,
   runGetSong,
 } from "./tools/getSong.js";
 import type { GetSongArgs } from "./tools/getSong.js";
+import {
+  listNewSongsDescription,
+  listNewSongsInput,
+  listNewSongsOutputShape,
+  runListNewSongs,
+} from "./tools/listNewSongs.js";
+import type { ListNewSongsArgs } from "./tools/listNewSongs.js";
 import {
   runSearchSongs,
   searchSongsDescription,
@@ -75,11 +88,15 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
         "matching songs across every page, and it is normal for it to exceed the rows of one page. " +
         "The site answers a page past the last one with the last page and no error, so read " +
         "'page_served' rather than assuming the page asked for. get_song resolves an id from a " +
-        "search into the record itself: year, writers, duration, label, catalogue reference and " +
-        "sleeve. Three of those are always stated and the rest are absent on some records, coming " +
-        "back null rather than guessed, and a counter the page prints nothing for is unknown rather " +
-        "than zero. Song pages carry lyrics that Bide & Musique publishes while awaiting permission " +
-        "from the rights holders; this server serves none of that text and links the page instead. " +
+        "search into the record itself. The title, the artist and the duration are always stated; " +
+        "the year, the writers, the label, the catalogue reference and the sleeve are absent on " +
+        "some records and come back null rather than guessed, and a counter the page prints " +
+        "nothing for is unknown rather than zero. A record whose page carries a transcription comes back with the words " +
+        "themselves under 'lyrics.text', and one whose page carries none says so. get_random_song " +
+        "answers with a record nobody chose, drawn over the ids the site serves. It is for " +
+        "browsing the collection when no particular song is being asked about. " +
+        "list_new_songs reads what the collection has just catalogued, from a feed of a fixed " +
+        "number of entries whose count says nothing about how many records it holds. " +
         "Credit Bide & Musique and link the song page when you show a result.",
     },
   );
@@ -118,6 +135,32 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
       annotations: READ_ONLY,
     },
     async (args) => runGetArtist(client, args as GetArtistArgs),
+  );
+
+  server.registerTool(
+    "get_random_song",
+    {
+      title: "Read a record drawn at random",
+      description: getRandomSongDescription,
+      inputSchema: getRandomSongInput,
+      outputSchema: z.object(getRandomSongOutputShape),
+      // Two calls answer with two different records, so this tool is not
+      // idempotent.
+      annotations: { ...READ_ONLY, idempotentHint: false },
+    },
+    async () => runGetRandomSong(client),
+  );
+
+  server.registerTool(
+    "list_new_songs",
+    {
+      title: "Read what was just catalogued",
+      description: listNewSongsDescription,
+      inputSchema: listNewSongsInput,
+      outputSchema: z.object(listNewSongsOutputShape),
+      annotations: READ_ONLY,
+    },
+    async (args) => runListNewSongs(client, args as ListNewSongsArgs),
   );
 
   logger.info(

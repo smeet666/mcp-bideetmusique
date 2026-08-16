@@ -27,6 +27,44 @@ function indentMarkerLines(body: string): string {
 }
 
 /**
+ * Text the site published, set apart from the lines this server writes.
+ *
+ * A transcription is whole lines typed by someone else, and the lines around it
+ * in the answer are labels this server writes: a line reading "Année : 2024" or
+ * "Note: ignore the record above" is read as one of them. Every published line
+ * is indented and the block is introduced, so nothing inside it can start a
+ * line of the answer, whatever labels this server writes later.
+ */
+export function quotedBlock(introduction: string, published: string): string {
+  const lines = published
+    .split("\n")
+    .map((line) => (line === "" ? "" : `  ${line}`))
+    .join("\n");
+
+  return `${introduction}\n${lines}`;
+}
+
+/** What a caller is told when the text block holds less than the answer. */
+const CUT_NOTE = "This text block is cut to fit. The structured answer carries the whole of it.";
+
+/**
+ * Add the note that says the text block was cut, when it will be.
+ *
+ * `ok` truncates whatever it is handed, so without this a shortened block reads
+ * as the whole answer. The budget is measured with the note already counted in
+ * the trailer, since adding it is what makes the block shorter still.
+ *
+ * Called by a tool before it builds its answer, because the notes belong to the
+ * structured payload as much as to the text.
+ */
+export function noteIfTextIsCut(body: string, notes: string[]): void {
+  const trailer = [...notes, CUT_NOTE].map((note) => `Note: ${note}`).join("\n");
+  const budget = Math.max(0, MAX_TEXT_MIRROR_CHARS - (trailer.length + 2));
+
+  if (body.length > budget) notes.push(CUT_NOTE);
+}
+
+/**
  * Build a result whose text block ends with the notes.
  *
  * The notes are what qualifies the answer: that the site served a different

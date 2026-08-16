@@ -12,17 +12,26 @@ import {
   loadConfig,
   withProjectIdentity,
 } from "../config.js";
-import { invalidInput } from "../errors.js";
-import type { Artist, SearchPage, Song } from "../types.js";
+import { invalidInput, parseFailure } from "../errors.js";
+import type { Artist, NewSongsFeed, SearchPage, Song } from "../types.js";
 import { TtlLruCache } from "./cache.js";
 import type { Fetched } from "./http.js";
 import { fetchHtml } from "./http.js";
 import { parseArtistPage } from "./parseArtist.js";
+import { parseNewSongs } from "./parseFeed.js";
 import { parseSearchPage } from "./parseSearch.js";
 import { parseSongPage, parseSongRecord } from "./parseSong.js";
 import { RateLimiter } from "./rateLimiter.js";
 import type { SearchType } from "./urls.js";
-import { ARTIST_ID, SONG_ID, artistUrl, buildSearchUrl, extractSongId, songUrl } from "./urls.js";
+import {
+  ARTIST_ID,
+  SONG_ID,
+  artistUrl,
+  buildSearchUrl,
+  extractSongId,
+  newSongsFeedUrl,
+  songUrl,
+} from "./urls.js";
 
 export interface BideEtMusiqueClientOptions {
   config?: Config;
@@ -69,6 +78,14 @@ export class BideEtMusiqueClient {
   private readonly limiter: RateLimiter;
   private readonly cache: TtlLruCache<unknown>;
   private readonly fetchImpl: typeof fetch | undefined;
+  /**
+   * Reads under way, by address.
+   *
+   * The cache is filled once a page has been read and parsed, so between the
+   * request going out and the answer coming back the address is absent from it.
+   * Two tools wanting the same page in one turn would each miss and each ask.
+   */
+  private readonly inFlight = new Map<string, Promise<unknown>>();
 
   constructor(options: BideEtMusiqueClientOptions = {}) {
     this.config = withGuarantees(options.config ?? loadConfig());
@@ -135,6 +152,42 @@ export class BideEtMusiqueClient {
     return this.fetchParsed(url, ({ html, finalUrl }) => parseArtistPage(html, finalUrl, id));
   }
 
+  /** The records the collection has just catalogued, newest first. */
+  async getNewSongs(): Promise<Outcome<NewSongsFeed>> {
+    const url = newSongsFeedUrl();
+    return this.fetchParsed(url, ({ html, finalUrl }) => parseNewSongs(html, finalUrl));
+  }
+
+  /**
+   * The highest song id the collection currently serves.
+   *
+   * The site publishes no count of its records and no route to a random one, so
+   * the far end of the range is read from its feed of new entries. It changes
+   * as the collection grows, which is why it is asked for rather than held as a
+   * constant.
+   *
+   * The feed is read through the same address as the list of new records, so
+   * wanting both in one turn costs the site one request whether the two calls
+   * follow each other or overlap.
+   */
+  async getNewestSongId(): Promise<Outcome<string>> {
+    const { data, cached } = await this.getNewSongs();
+
+    let highest = 0;
+    for (const song of data.songs) {
+      const id = Number.parseInt(song.songId, 10);
+      if (Number.isFinite(id) && id > highest) highest = id;
+    }
+
+    // A feed shaped like a feed while naming no usable id would otherwise hand
+    // back a range that ends before it starts.
+    if (highest <= 0) {
+      throw parseFailure(newSongsFeedUrl(), "a feed naming no id to read the range from");
+    }
+
+    return { data: String(highest), cached };
+  }
+
   /**
    * Fetch, parse, then cache. In that order: a page that could not be read is
    * never stored, so a bad minute at the site cannot be replayed from memory
@@ -151,15 +204,32 @@ export class BideEtMusiqueClient {
       return { data: hit as T, cached: true };
     }
 
-    const fetched = await fetchHtml(url, {
-      config: this.config,
-      limiter: this.limiter,
-      logger: this.logger,
-      ...(this.fetchImpl ? { fetchImpl: this.fetchImpl } : {}),
-    });
+    const underWay = this.inFlight.get(url);
+    if (underWay !== undefined) {
+      this.logger.debug(`joining the read under way for ${url}`);
+      return { data: (await underWay) as T, cached: true };
+    }
 
-    const data = parse(fetched);
-    this.cache.set(url, data);
-    return { data, cached: false };
+    const read = (async () => {
+      const fetched = await fetchHtml(url, {
+        config: this.config,
+        limiter: this.limiter,
+        logger: this.logger,
+        ...(this.fetchImpl ? { fetchImpl: this.fetchImpl } : {}),
+      });
+
+      const data = parse(fetched);
+      this.cache.set(url, data);
+      return data;
+    })();
+
+    // Dropped on failure as well as on success, so a bad minute is not
+    // remembered as the answer for every later caller.
+    this.inFlight.set(url, read);
+    try {
+      return { data: (await read) as T, cached: false };
+    } finally {
+      this.inFlight.delete(url);
+    }
   }
 }

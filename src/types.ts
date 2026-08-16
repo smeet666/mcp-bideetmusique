@@ -29,18 +29,52 @@ export interface CommentCount {
 }
 
 /**
- * What the record says about its lyrics, and nothing of the lyrics themselves.
+ * The lyrics a record page carries, with what the page says around them.
  *
- * Bide & Musique prints transcriptions its members typed, under a notice saying
- * it awaits permission from the rights holders. This server repeats none of that
- * text on any path: it says the page has some, who typed them, and where to read
- * them.
+ * `available` reports the cell, `text` reports what was read out of it. A cell
+ * holding nothing readable leaves `text` null with `available` true, which says
+ * the page announced lyrics and none could be read; the two are separate
+ * because merging them would report an unreadable cell as a record with no
+ * lyrics at all.
  */
 export interface LyricsInfo {
   available: boolean;
+  /** The lines as published, separated by newlines, free of markup. */
+  text: string | null;
   transcriber: string | null;
   rightsNotice: boolean;
   url: string;
+}
+
+/**
+ * One entry in the feed of records the collection has just catalogued.
+ *
+ * The feed publishes a single line naming both the artist and the song, and
+ * `listedAs` keeps it as published: the two are read off it at the first
+ * separator, and the line is what a caller checks that reading against.
+ */
+export interface NewSong {
+  songId: string;
+  title: string;
+  /** Null when the line names no artist apart from the song. */
+  artistName: string | null;
+  listedAs: string;
+  url: string;
+  /** When the feed published it, as an ISO date, or null when it states none. */
+  publishedAt: string | null;
+}
+
+/**
+ * The feed as a whole: what it published, and what could be read out of it.
+ *
+ * The two are separate because an entry pointing at something other than a
+ * record is dropped, and a list of what was read, counted as what the site
+ * published, would be a count of a feed nobody serves.
+ */
+export interface NewSongsFeed {
+  songs: NewSong[];
+  /** Entries the feed carries, read or not. */
+  published: number;
 }
 
 /** An address off the site, with the label the page gave it. */
