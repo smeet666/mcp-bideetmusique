@@ -82,6 +82,9 @@ export function songUrl(id: string): string {
   return `${BASE_URL}/song/${id}.html`;
 }
 
+/** An artist id as the site numbers them. */
+export const ARTIST_ID = /^\d+$/;
+
 export function artistUrl(id: string): string {
   return `${BASE_URL}/artist/${id}.html`;
 }

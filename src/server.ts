@@ -11,6 +11,13 @@ import { BideEtMusiqueClient } from "./bideetmusique/client.js";
 import type { Config, Logger } from "./config.js";
 import { createLogger, loadConfig } from "./config.js";
 import {
+  getArtistDescription,
+  getArtistInput,
+  getArtistOutputShape,
+  runGetArtist,
+} from "./tools/getArtist.js";
+import type { GetArtistArgs } from "./tools/getArtist.js";
+import {
   getSongDescription,
   getSongInput,
   getSongOutputShape,
@@ -99,6 +106,18 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
       annotations: READ_ONLY,
     },
     async (args) => runGetSong(client, args as GetSongArgs),
+  );
+
+  server.registerTool(
+    "get_artist",
+    {
+      title: "Read an artist's page",
+      description: getArtistDescription,
+      inputSchema: getArtistInput,
+      outputSchema: z.object(getArtistOutputShape),
+      annotations: READ_ONLY,
+    },
+    async (args) => runGetArtist(client, args as GetArtistArgs),
   );
 
   logger.info(

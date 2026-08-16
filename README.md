@@ -21,10 +21,10 @@ about the others.
 | `writer` | who wrote or composed it |
 | `lyrics` | the words sung in it |
 
-`lyrics` is the one that answers "what is that song where they sing about a
-photocopier?". It returns the songs whose words match, and none of the text
-itself: Bide & Musique publishes those transcriptions while awaiting permission
-from the rights holders, so this server links the page rather than repeating it.
+A second tool, `get_song`, resolves an id from a search into the record itself:
+the year, the writers and composers, the duration, the label and its catalogue
+reference, the sleeve, the day the collection catalogued it, the station's own
+chart, and how many people kept it as a favourite.
 
 ## What it will not claim
 
@@ -85,8 +85,8 @@ address where someone can be reached. The server reads and never writes.
 
 ## Licence
 
-MIT. Song data belongs to Bide & Musique and to the rights holders of the works
-it describes; credit the site and link the record when you show a result.
+MIT, for the code. What the collection holds belongs to Bide & Musique: credit
+the site and link the record when you show a result.
 
 ---
 
@@ -113,11 +113,10 @@ ne dit rien des autres.
 | `writer` | qui l'a écrit ou composé |
 | `lyrics` | les mots chantés dedans |
 
-`lyrics` répond à « c'est quoi, cette chanson où ils parlent d'un
-photocopieur ? ». Il rend les morceaux dont les paroles correspondent, et aucun
-mot du texte : Bide & Musique publie ces transcriptions en attendant
-l'autorisation des ayants droit, donc ce serveur renvoie vers la page plutôt que
-de la répéter.
+Un second outil, `get_song`, résout un identifiant rendu par une recherche en la
+fiche elle-même : l'année, les auteurs et compositeurs, la durée, le label et sa
+référence de catalogue, la pochette, le jour où la collection l'a catalogué, le
+classement maison et le nombre de personnes qui l'ont mis en favori.
 
 ## Ce qu'il refuse d'affirmer
 
@@ -149,5 +148,5 @@ n'écrit jamais.
 
 ## Licence
 
-MIT. Les données appartiennent à Bide & Musique et aux ayants droit des œuvres
-décrites ; créditez le site et liez la fiche quand vous montrez un résultat.
+MIT, pour le code. Ce que contient la collection appartient à Bide & Musique :
+créditez le site et liez la fiche quand vous montrez un résultat.

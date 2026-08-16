@@ -13,15 +13,16 @@ import {
   withProjectIdentity,
 } from "../config.js";
 import { invalidInput } from "../errors.js";
-import type { SearchPage, Song } from "../types.js";
+import type { Artist, SearchPage, Song } from "../types.js";
 import { TtlLruCache } from "./cache.js";
 import type { Fetched } from "./http.js";
 import { fetchHtml } from "./http.js";
+import { parseArtistPage } from "./parseArtist.js";
 import { parseSearchPage } from "./parseSearch.js";
 import { parseSongPage, parseSongRecord } from "./parseSong.js";
 import { RateLimiter } from "./rateLimiter.js";
 import type { SearchType } from "./urls.js";
-import { SONG_ID, buildSearchUrl, extractSongId, songUrl } from "./urls.js";
+import { ARTIST_ID, SONG_ID, artistUrl, buildSearchUrl, extractSongId, songUrl } from "./urls.js";
 
 export interface BideEtMusiqueClientOptions {
   config?: Config;
@@ -120,6 +121,18 @@ export class BideEtMusiqueClient {
     }
     const url = songUrl(id);
     return this.fetchParsed(url, ({ html, finalUrl }) => parseSongRecord(html, finalUrl, id));
+  }
+
+  /** Read one artist page: who they are, and what the collection holds of them. */
+  async getArtist(id: string): Promise<Outcome<Artist>> {
+    if (!ARTIST_ID.test(id)) {
+      throw invalidInput(
+        `"${id}" is not a Bide & Musique artist id.`,
+        "Ids are digits only, as returned by search_songs and get_song.",
+      );
+    }
+    const url = artistUrl(id);
+    return this.fetchParsed(url, ({ html, finalUrl }) => parseArtistPage(html, finalUrl, id));
   }
 
   /**

@@ -43,6 +43,52 @@ export interface LyricsInfo {
   url: string;
 }
 
+/** An address off the site, with the label the page gave it. */
+export interface ExternalLink {
+  label: string;
+  url: string;
+}
+
+/** One record in what an artist has in the collection. */
+export interface DiscographyEntry {
+  songId: string;
+  title: string;
+  url: string;
+  year: number | null;
+  programming: string | null;
+  imageUrl: string | null;
+  thumbnailUrl: string | null;
+}
+
+/**
+ * An artist, as the catalogue holds them.
+ *
+ * Half of these pages carry nothing but a name, and the median artist has one
+ * record in the collection: every field below the name is absent more often than
+ * not, which is the ordinary state of the catalogue rather than a failed read.
+ */
+export interface Artist {
+  id: string;
+  url: string;
+  name: string;
+  aliases: string[];
+  /** The catalogue's own "Nom". */
+  surname: string | null;
+  /** Its "Prénom". */
+  firstName: string | null;
+  nationality: string | null;
+  /**
+   * Exactly as published. The catalogue writes a full date, a bare year, a month
+   * and a year, or a date with a death beside it, so nothing here is parsed.
+   */
+  birthDate: string | null;
+  presentation: string | null;
+  seeAlso: ArtistLink[];
+  links: ExternalLink[];
+  photoUrl: string | null;
+  discography: DiscographyEntry[];
+}
+
 /** One record, as the site publishes it. */
 export interface Song {
   id: string;
