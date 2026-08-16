@@ -1,0 +1,115 @@
+# Nightly canary against the live site.
+#
+# The unit tests run against markup this repository builds, so they cannot
+# notice that Bide & Musique changed how it publishes a page: the day it does,
+# they stay green while the published server is broken for everyone. This job
+# and the evals beside it are the only things that notice, and they open an
+# issue when they fail.
+#
+# It is deliberately separate from CI: it depends on a third-party site, so a
+# failure here means the site moved, and says nothing about the pull request.
+
+name: Live canary
+
+on:
+  schedule:
+    # 05:47 UTC, off the hour and clear of the other scheduled jobs.
+    - cron: "47 5 * * *"
+  workflow_dispatch:
+
+# A single run at a time, so a slow night cannot overlap with the next one.
+concurrency:
+  group: live-canary
+  cancel-in-progress: false
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Needed to open the issue that reports a broken contract.
+      issues: write
+    env:
+      # Slower than the default: a scheduled job has no user waiting, and a
+      # volunteer association pays for these pages.
+      BIDE_MIN_INTERVAL_MS: "5000"
+      # Generous: the timeout absorbs a slow answer, so a failure means the page
+      # changed.
+      BIDE_TIMEOUT_MS: "60000"
+      BIDE_LOG_LEVEL: info
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Read one page per route
+        env:
+          BIDE_LIVE: "1"
+        run: npm run test:live
+
+      # Records nobody chose, held to the properties every record must satisfy.
+      # The smoke above reads pages this repository picked, so it cannot see a
+      # reader that works on those and breaks on the rest of the catalogue.
+      - name: Check records drawn from the collection
+        if: always()
+        env:
+          BIDE_EVAL: "1"
+          BIDE_EVAL_DRAWS: "5"
+        run: npm run test:eval
+
+      - name: Report a broken canary
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "Live canary failing: Bide & Musique may have changed a page";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              "The nightly canary failed. Either Bide & Musique changed how it publishes the pages",
+              "this server reads, or the site was unreachable from the runner.",
+              "",
+              `Run: ${runUrl}`,
+              "",
+              "The evals tell those apart: they report a site that could not be read and fail only on",
+              "a page that was read wrongly. So a failing eval step names a reader to fix, and the",
+              "assertion messages name the property that broke.",
+              "",
+              "Three of those properties are worth reading first, because each guards something a",
+              "caller cannot check for itself:",
+              "",
+              "- The transcription carries no markup and none of the rows printed below its cell. The",
+              "  site closes that cell with `</tr>` alone on the records it credits no transcriber for,",
+              "  so a reader waiting for `</td>` swallows the page under it.",
+              "- The feed of new records is served as UTF-8 where the pages are ISO-8859-1. Accents",
+              "  turning into `Ã` mean the charset stopped being read from the response.",
+              "- A count is the site's own. A count this server computed and named like the site's is",
+              "  the failure this project exists to avoid.",
+            ].join("\n");
+
+            // Reuse the open issue rather than filing one every night.
+            const existing = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "live-canary",
+            });
+
+            if (existing.data.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.data[0].number,
+                body: `Still failing as of ${new Date().toISOString()}. ${runUrl}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ["live-canary"],
+              });
+            }

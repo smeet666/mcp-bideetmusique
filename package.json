@@ -1,6 +1,6 @@
 {
   "name": "mcp-bideetmusique",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "MCP server for Bide & Musique. Search the collection of forgotten French songs by performer or by title. No API key required.",
   "type": "module",
   "license": "MIT",
@@ -48,6 +48,7 @@
     "pretest": "npm run build:fixtures",
     "test": "vitest run test/unit",
     "test:live": "vitest run test/live --testTimeout=60000",
+    "test:eval": "vitest run test/eval --testTimeout=180000 --disable-console-intercept",
     "build:fixtures": "node scripts/build-fixtures.mjs",
     "format": "prettier --write .",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build",
@@ -75,7 +76,7 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "zod": "^3.25.76"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
