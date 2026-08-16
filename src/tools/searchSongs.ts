@@ -261,8 +261,9 @@ export async function runSearchSongs(
     if (data.songs.length === 0) {
       notes.push(
         `Bide & Musique found no song for "${query}" on the ${SEARCH_TYPE_LABELS[args.search_type]} ` +
-          "axis, which says nothing about the other three. A name can be a title, a title can be a " +
-          "line of a song, and someone who wrote a record may never have sung on one.",
+          "axis, which says nothing about the other axes. A name can be a title, a title can be a " +
+          "line of a song, a label can be a word, and someone who wrote a record may never have " +
+          "sung on one.",
       );
     }
 

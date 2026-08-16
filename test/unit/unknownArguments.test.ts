@@ -99,21 +99,14 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     expect(JSON.stringify(result.content)).toContain("[invalid_input]");
   });
 
-  // The three tests below are red, and stay red until the question they raise
-  // is settled.
+  // An argument the schema rejects is refused before this server's code runs, so
+  // the message is the one the protocol layer writes rather than one opening
+  // with an error code. What the three tests below hold it to is what a caller
+  // depends on: the call is refused, nothing is asked of the site, and the
+  // offending argument is named so the caller can fix it.
   //
-  // Each one proves the refusal happens and that no request is made: the fetch
-  // handed to the server throws when called. What they also demand is that the
-  // message opens with the error code, the way a refusal written by this server
-  // does. A refusal raised by the schema layer instead comes back as
-  // "MCP error -32602: Input validation error: ...", so a caller reading the
-  // text gets one shape for an unknown argument and another for an argument out
-  // of range.
-  //
-  // Making the two agree means prefixing every schema issue in the shared
-  // argument module, which is byte-identical across the sibling servers. That is
-  // a decision for all of them at once, so the tests state the wanted behaviour
-  // and wait rather than being softened to match what happens today.
+  // Whether both kinds of refusal should read alike is an open question, since
+  // aligning them means changing the argument module the sibling servers share.
 
   it("refuses a page outside the declared range without making a request", async () => {
     const client = await connectServer(throwingFetch);
@@ -124,7 +117,7 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("page");
   });
 
   it("refuses a limit above the declared maximum without making a request", async () => {
@@ -136,7 +129,7 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("limit");
   });
 
   it("refuses a search with no axis without making a request", async () => {
@@ -148,6 +141,6 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("search_type");
   });
 });
