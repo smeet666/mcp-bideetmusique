@@ -7,8 +7,19 @@
 
 import { describe, expect, it } from "vitest";
 
+import { getArtistInput } from "../../src/tools/getArtist.js";
+import { getSongInput } from "../../src/tools/getSong.js";
 import { searchSongsInput } from "../../src/tools/searchSongs.js";
 import { connectServer, throwingFetch } from "./helpers.js";
+
+/** The message of every issue a refusal carries. */
+function refusalMessages(result: {
+  success: boolean;
+  error?: { issues: Array<{ message: string }> };
+}): string[] {
+  expect(result.success).toBe(false);
+  return (result.error?.issues ?? []).map((issue) => issue.message);
+}
 
 describe("the declared shape of the arguments", () => {
   it("accepts the two required arguments and fills page and limit with their defaults", () => {
@@ -18,8 +29,12 @@ describe("the declared shape of the arguments", () => {
   });
 
   it("refuses an argument it does not declare", () => {
-    expect(searchSongsInput.safeParse({ query: "x", search_type: "title", sort: "date" }).success).toBe(false);
-    expect(searchSongsInput.safeParse({ query: "x", search_type: "title", Page: 2 }).success).toBe(false);
+    expect(
+      searchSongsInput.safeParse({ query: "x", search_type: "title", sort: "date" }).success,
+    ).toBe(false);
+    expect(searchSongsInput.safeParse({ query: "x", search_type: "title", Page: 2 }).success).toBe(
+      false,
+    );
   });
 
   it("refuses a search with no axis, since the two axes ask different questions", () => {
@@ -44,35 +59,48 @@ describe("the declared shape of the arguments", () => {
   });
 
   it("accepts a query of 200 characters and refuses one of 201", () => {
-    expect(searchSongsInput.safeParse({ query: "a".repeat(200), search_type: "title" }).success).toBe(true);
-    expect(searchSongsInput.safeParse({ query: "a".repeat(201), search_type: "title" }).success).toBe(false);
-    expect(searchSongsInput.safeParse({ query: "é".repeat(400), search_type: "title" }).success).toBe(false);
+    expect(
+      searchSongsInput.safeParse({ query: "a".repeat(200), search_type: "title" }).success,
+    ).toBe(true);
+    expect(
+      searchSongsInput.safeParse({ query: "a".repeat(201), search_type: "title" }).success,
+    ).toBe(false);
+    expect(
+      searchSongsInput.safeParse({ query: "é".repeat(400), search_type: "title" }).success,
+    ).toBe(false);
   });
 
   it("accepts pages 1 to 200 and refuses anything outside that range", () => {
     for (const page of [1, 2, 200]) {
-      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", page }).success).toBe(true);
+      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", page }).success).toBe(
+        true,
+      );
     }
     for (const page of [0, -1, 201, 1.5, "2", null]) {
-      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", page }).success).toBe(false);
+      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", page }).success).toBe(
+        false,
+      );
     }
   });
 
   it("accepts limits 1 to 50 and refuses anything outside that range", () => {
     for (const limit of [1, 20, 50]) {
-      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", limit }).success).toBe(true);
+      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", limit }).success).toBe(
+        true,
+      );
     }
     for (const limit of [0, -5, 51, 2.5, "10", null]) {
-      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", limit }).success).toBe(false);
+      expect(searchSongsInput.safeParse({ query: "x", search_type: "title", limit }).success).toBe(
+        false,
+      );
     }
   });
 });
 
 /**
- * Every refusal below is an `invalid_input` refusal, and the contract says the
- * error text opens with `[invalid_input]`: a caller reads the code to tell a
- * bad argument from a site that is down. A refusal raised by the schema layer
- * has to carry the same code as one raised by the tool body.
+ * What a caller depends on when an argument is bad: the call is refused, the
+ * site is left alone, and the message names what to fix. The fetch handed to
+ * the server throws when touched, so a refusal that came too late fails here.
  */
 describe("rule 17 — the tool never contacts the site in order to refuse", () => {
   it("refuses an unknown argument without making a request", async () => {
@@ -84,7 +112,7 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("sort");
   });
 
   it("refuses a query that is nothing but spaces without making a request", async () => {
@@ -96,24 +124,8 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("query");
   });
-
-  // The three tests below are red, and stay red until the question they raise
-  // is settled.
-  //
-  // Each one proves the refusal happens and that no request is made: the fetch
-  // handed to the server throws when called. What they also demand is that the
-  // message opens with the error code, the way a refusal written by this server
-  // does. A refusal raised by the schema layer instead comes back as
-  // "MCP error -32602: Input validation error: ...", so a caller reading the
-  // text gets one shape for an unknown argument and another for an argument out
-  // of range.
-  //
-  // Making the two agree means prefixing every schema issue in the shared
-  // argument module, which is byte-identical across the sibling servers. That is
-  // a decision for all of them at once, so the tests state the wanted behaviour
-  // and wait rather than being softened to match what happens today.
 
   it("refuses a page outside the declared range without making a request", async () => {
     const client = await connectServer(throwingFetch);
@@ -124,7 +136,7 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("page");
   });
 
   it("refuses a limit above the declared maximum without making a request", async () => {
@@ -136,7 +148,7 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("limit");
   });
 
   it("refuses a search with no axis without making a request", async () => {
@@ -148,6 +160,66 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
     });
 
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result.content)).toContain("[invalid_input]");
+    expect(JSON.stringify(result.content)).toContain("search_type");
+  });
+});
+
+/**
+ * One vocabulary for every refusal.
+ *
+ * A caller branches on the error code a message opens with. The code of a tool
+ * writes its own refusals and the schema refuses on its own before that code
+ * runs, so both paths open with the same code and name the argument at fault.
+ */
+describe("every refusal of an argument opens with its error code", () => {
+  const outsideTheDeclaration: Array<[string, unknown]> = [
+    ["a page below the range", { query: "x", search_type: "title", page: 0 }],
+    ["a page above the range", { query: "x", search_type: "title", page: 201 }],
+    ["a page that is not whole", { query: "x", search_type: "title", page: 1.5 }],
+    ["a limit above the maximum", { query: "x", search_type: "title", limit: 51 }],
+    ["a query longer than the maximum", { query: "a".repeat(201), search_type: "title" }],
+    ["a query of the wrong type", { query: 42, search_type: "title" }],
+    ["a missing query", { search_type: "title" }],
+    ["a missing axis", { query: "x" }],
+    ["an axis the site does not offer", { query: "x", search_type: "album" }],
+    ["an argument that is not declared", { query: "x", search_type: "title", sort: "date" }],
+  ];
+
+  it.each(outsideTheDeclaration)("refuses %s with the code", (_name, argument) => {
+    for (const message of refusalMessages(searchSongsInput.safeParse(argument))) {
+      expect(message).toMatch(/^\[invalid_input\] /);
+    }
+  });
+
+  it("carries the code on the other two tools as well", () => {
+    for (const message of refusalMessages(getSongInput.safeParse({ song_id: 0 }))) {
+      expect(message).toMatch(/^\[invalid_input\] /);
+    }
+    for (const message of refusalMessages(getArtistInput.safeParse({ artist_id: -1 }))) {
+      expect(message).toMatch(/^\[invalid_input\] /);
+    }
+  });
+
+  it("names the argument at fault alongside the code", () => {
+    const refused = searchSongsInput.safeParse({ query: "x", search_type: "title", page: 0 });
+
+    expect(refused.success).toBe(false);
+    if (!refused.success) {
+      expect(refused.error.issues[0]!.path).toEqual(["page"]);
+    }
+  });
+
+  it("reaches a caller through the tool, code and argument together", async () => {
+    const client = await connectServer(throwingFetch);
+
+    const result = await client.callTool({
+      name: "search_songs",
+      arguments: { query: "placeholder", search_type: "title", page: 0 },
+    });
+
+    expect(result.isError).toBe(true);
+    const said = JSON.stringify(result.content);
+    expect(said).toContain("[invalid_input]");
+    expect(said).toContain("page");
   });
 });

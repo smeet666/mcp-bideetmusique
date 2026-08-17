@@ -58,4 +58,26 @@ describe.skipIf(!live)("live smoke", () => {
     expect(data.songs).toEqual([]);
     expect(data.totalMatches).toBe(0);
   });
+
+  it("reads the records the collection has just catalogued", async () => {
+    const { data } = await client.getNewSongs();
+
+    expect(data.songs.length).toBeGreaterThan(0);
+    expect(data.published).toBeGreaterThanOrEqual(data.songs.length);
+
+    const first = data.songs[0]!;
+    expect(first.songId).toMatch(/^\d+$/);
+    expect(first.url).toMatch(/^https:\/\/www\.bide-et-musique\.com\/song\/\d+\.html$/);
+    expect(first.listedAs.length).toBeGreaterThan(0);
+    // The feed is served as UTF-8 where the pages are ISO-8859-1, and a client
+    // reading it on the wrong one leaves these behind.
+    expect(data.songs.map((song) => song.listedAs).join(" ")).not.toMatch(/Ã|�/);
+  });
+
+  it("reads the newest id from that same feed", async () => {
+    const { data } = await client.getNewestSongId();
+
+    expect(data).toMatch(/^\d+$/);
+    expect(Number.parseInt(data, 10)).toBeGreaterThan(30_000);
+  });
 });

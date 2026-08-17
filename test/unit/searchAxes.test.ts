@@ -182,7 +182,7 @@ describe("rule 1 — the URL carries the right st", () => {
 });
 
 describe("rule 2 — the enum is what the tool declares", () => {
-  it("declares exactly the four axes the site offers", async () => {
+  it("declares exactly the axes this server publishes", async () => {
     const client = await connectServer(throwingFetch);
     const { tools } = await client.listTools();
     const tool = tools.find((candidate) => candidate.name === "search_songs");
@@ -191,7 +191,14 @@ describe("rule 2 — the enum is what the tool declares", () => {
     const schema = tool!.inputSchema as {
       properties: { search_type?: { enum?: string[] } };
     };
-    expect(schema.properties.search_type?.enum).toEqual(["performer", "title", "writer", "lyrics"]);
+    expect(schema.properties.search_type?.enum).toEqual([
+      "performer",
+      "title",
+      "writer",
+      "lyrics",
+      "label",
+      "year",
+    ]);
   });
 
   it("refuses an axis the site does not offer before making any request", async () => {
@@ -213,7 +220,9 @@ describe("rule 3 — each axis is named in the answer", () => {
       performer: "Interprète",
       title: "Nom du morceau",
       writer: "Auteur / Compositeur",
+      label: "Label",
       lyrics: "Paroles",
+      year: "Année",
     });
   });
 

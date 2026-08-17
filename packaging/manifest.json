@@ -1,0 +1,61 @@
+{
+  "manifest_version": "0.3",
+  "name": "mcp-bideetmusique",
+  "display_name": "Bide & Musique",
+  "version": "0.3.0",
+  "description": "MCP server for Bide & Musique. Search the hand-built catalogue of forgotten French songs. No API key required.",
+  "long_description": "Search Bide & Musique along one axis at a time, read a record with its year, label, writers and the words its page publishes, read an artist's page, draw a record at random, and see what the collection has just catalogued. No API key, no account, read-only.",
+  "author": {
+    "name": "Damien Bouissou",
+    "url": "https://github.com/smeet666"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smeet666/mcp-bideetmusique.git"
+  },
+  "homepage": "https://github.com/smeet666/mcp-bideetmusique#readme",
+  "documentation": "https://github.com/smeet666/mcp-bideetmusique#readme",
+  "support": "https://github.com/smeet666/mcp-bideetmusique/issues",
+  "icon": "assets/icon-512.png",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "model-context-protocol",
+    "mcp-server",
+    "bide-et-musique",
+    "music",
+    "song",
+    "songs",
+    "webradio",
+    "french",
+    "chanson",
+    "discography",
+    "no-api-key"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"]
+    }
+  },
+  "tools": [
+    { "name": "search_songs", "description": "Search the collection along one named axis." },
+    { "name": "get_song", "description": "Read one record, with the words its page publishes." },
+    {
+      "name": "get_artist",
+      "description": "Read an artist's page and what the collection holds of them."
+    },
+    {
+      "name": "get_random_song",
+      "description": "Read a record drawn at random from the collection."
+    },
+    { "name": "list_new_songs", "description": "Read what the collection has just catalogued." }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": { "node": ">=20.0.0" }
+  }
+}
