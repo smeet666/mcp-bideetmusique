@@ -23,6 +23,7 @@ import {
   getRandomSongOutputShape,
   runGetRandomSong,
 } from "./tools/getRandomSong.js";
+import type { GetRandomSongOptions } from "./tools/getRandomSong.js";
 import {
   getSongDescription,
   getSongInput,
@@ -110,7 +111,7 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
       outputSchema: z.object(searchSongsOutputShape),
       annotations: READ_ONLY,
     },
-    async (args) => runSearchSongs(client, args as SearchSongsArgs),
+    async (args, extra) => runSearchSongs(client, args as SearchSongsArgs, extra?.signal),
   );
 
   server.registerTool(
@@ -122,7 +123,7 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
       outputSchema: z.object(getSongOutputShape),
       annotations: READ_ONLY,
     },
-    async (args) => runGetSong(client, args as GetSongArgs),
+    async (args, extra) => runGetSong(client, args as GetSongArgs, extra?.signal),
   );
 
   server.registerTool(
@@ -134,7 +135,7 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
       outputSchema: z.object(getArtistOutputShape),
       annotations: READ_ONLY,
     },
-    async (args) => runGetArtist(client, args as GetArtistArgs),
+    async (args, extra) => runGetArtist(client, args as GetArtistArgs, extra?.signal),
   );
 
   server.registerTool(
@@ -148,7 +149,7 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
       // idempotent.
       annotations: { ...READ_ONLY, idempotentHint: false },
     },
-    async () => runGetRandomSong(client),
+    async (args, extra) => runGetRandomSong(client, args as GetRandomSongOptions, extra?.signal),
   );
 
   server.registerTool(
@@ -160,7 +161,7 @@ export function createServer(options: CreateServerOptions = {}): McpServer {
       outputSchema: z.object(listNewSongsOutputShape),
       annotations: READ_ONLY,
     },
-    async (args) => runListNewSongs(client, args as ListNewSongsArgs),
+    async (args, extra) => runListNewSongs(client, args as ListNewSongsArgs, extra?.signal),
   );
 
   logger.info(

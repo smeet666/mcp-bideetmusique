@@ -26,7 +26,23 @@ const NO_RESULT = /Il n['’]y a pas de r[ée]sultat/i;
 const RESULTS_TABLE = /class="bmtable/i;
 const HEADER_COUNT = /R[ée]sultat de votre recherche\s*\(\s*([\d\s .,]+?)\s+pour/i;
 
-const ROW = /<tr\s+class=["']?p[01]["']?[^>]*>([\s\S]*?)<\/tr>/gi;
+/**
+ * How far a lazy match may run before a page is judged unreadable.
+ *
+ * Each of these elements holds one thing: a label, a cell, a row. Letting a
+ * match run to the end of the document lets a page that repeats an opening it
+ * never closes send the search back over everything that follows, once per
+ * opening, and the whole server waits on it. Each bound is an order of
+ * magnitude past what the site prints there.
+ */
+const INLINE_MAX = 400;
+const CELL_MAX = 2_000;
+const ROW_MAX = 8_000;
+
+const ROW = new RegExp(
+  String.raw`<tr\s+class=["']?p[01]["']?[^>]*>([\s\S]{0,${ROW_MAX}}?)</tr>`,
+  "gi",
+);
 
 /**
  * The rest of an opening tag, up to the `>` that closes it.
@@ -38,21 +54,36 @@ const ROW = /<tr\s+class=["']?p[01]["']?[^>]*>([\s\S]*?)<\/tr>/gi;
  */
 const TAG_REST = String.raw`(?:[^>"]|"[^"]*")*`;
 
-const SONG_ANCHOR = new RegExp(String.raw`<a\s+href="/song/(\d+)\.html"${TAG_REST}>([\s\S]*?)</a>`, "i");
-const ARTIST_ANCHOR = new RegExp(String.raw`<a\s+href="/artist/(\d+)\.html"${TAG_REST}>([\s\S]*?)</a>`, "i");
+const SONG_ANCHOR = new RegExp(
+  String.raw`<a\s+href="/song/(\d+)\.html"${TAG_REST}>([\s\S]{0,${INLINE_MAX}}?)</a>`,
+  "i",
+);
+const ARTIST_ANCHOR = new RegExp(
+  String.raw`<a\s+href="/artist/(\d+)\.html"${TAG_REST}>([\s\S]{0,${INLINE_MAX}}?)</a>`,
+  "i",
+);
 const THUMBNAIL = /<img[^>]+src="(\/images\/thumb\d*\/\d+\.[a-z]{3,4})"/i;
 /** The sleeve at full size, which the row publishes behind its thumbnail. */
 const SLEEVE = /show-image\.html\?I=(\/images\/pochettes\/\d+\.[a-z]{3,4})/i;
-const CATEGORY_CELL = /<td[^>]*class="category"[^>]*>([\s\S]*?)<\/td>/i;
+const CATEGORY_CELL = new RegExp(
+  String.raw`<td[^>]*class="category"[^>]*>([\s\S]{0,${CELL_MAX}}?)</td>`,
+  "i",
+);
 const IMAGE_ALT = /\balt\s*=\s*"([^"]*)"/i;
 
-const PAGEBAR = /<span[^>]*class="pagebar"[^>]*>([\s\S]*?)<\/span>/i;
+const PAGEBAR = new RegExp(
+  String.raw`<span[^>]*class="pagebar"[^>]*>([\s\S]{0,${CELL_MAX}}?)</span>`,
+  "i",
+);
 const ACTIVE_PAGE = /<td[^>]*class="pageactive"[^>]*>\s*(\d+)\s*<\/td>/i;
 /** The separator is read from the markup, where an ampersand is written `&amp;`. */
 const PAGE_LINK = /[?&](?:amp;)?Page=(\d+)/gi;
 
 /** The artist credit as printed, and the artist it is an alias of. */
-const ALIAS = /<em[^>]*>\s*\(?\s*alias de\s+([\s\S]*?)\s*\)?\s*<\/em>/i;
+const ALIAS = new RegExp(
+  String.raw`<em[^>]*>\s*\(?\s*alias de\s+([\s\S]{0,${INLINE_MAX}}?)\s*\)?\s*</em>`,
+  "i",
+);
 
 export function parseSearchPage(html: string, url: string): SearchPage {
   const start = html.search(RESULTS_BLOCK);
@@ -207,8 +238,7 @@ function readPagination(block: string): {
   }
 
   const pageCount = highest > 0 ? highest : null;
-  const hasMorePages =
-    pageServed !== null && pageCount !== null ? pageServed < pageCount : null;
+  const hasMorePages = pageServed !== null && pageCount !== null ? pageServed < pageCount : null;
 
   return { pageServed, pageCount, hasMorePages };
 }

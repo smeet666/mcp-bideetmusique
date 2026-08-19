@@ -55,6 +55,14 @@ export interface HttpDeps {
   limiter: RateLimiter;
   logger: Logger;
   fetchImpl?: typeof fetch;
+  /**
+   * The caller's own signal, when the host gave one.
+   *
+   * A host that abandons a call stops waiting for the answer, and without this
+   * the retries keep going: a site run by volunteers would be asked again for
+   * a page nobody reads any more.
+   */
+  signal?: AbortSignal;
 }
 
 export interface Fetched {
@@ -76,6 +84,7 @@ export interface Fetched {
 export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
   const { config, limiter, logger } = deps;
   const doFetch = deps.fetchImpl ?? fetch;
+  const abandoned = () => deps.signal?.aborted === true;
 
   return limiter.schedule(async () => {
     let lastError: BideEtMusiqueError | undefined;
@@ -86,11 +95,13 @@ export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
     let askedWaitMs: number | null = null;
 
     for (let attempt = 0; attempt <= config.maxRetries; attempt += 1) {
+      if (abandoned()) throw givenUp(url);
       if (attempt > 0) {
         const delay = Math.min(askedWaitMs ?? backoffDelay(attempt - 1), BACKOFF_MAX_MS);
         askedWaitMs = null;
         logger.info(`retry ${attempt}/${config.maxRetries} in ${delay}ms for ${url}`);
         await sleep(delay);
+        if (abandoned()) throw givenUp(url);
       }
 
       let status: number;
@@ -106,7 +117,11 @@ export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
             "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
           },
           redirect: "follow",
-          signal: AbortSignal.timeout(config.timeoutMs),
+          // Whichever comes first: the caller giving up, or this client's own
+          // patience running out.
+          signal: deps.signal
+            ? AbortSignal.any([deps.signal, AbortSignal.timeout(config.timeoutMs)])
+            : AbortSignal.timeout(config.timeoutMs),
         });
         status = response.status;
         // A stub may leave `url` empty, which is not an address to report.
@@ -212,6 +227,14 @@ async function readBounded(response: Response, url: string): Promise<Uint8Array>
     at += chunk.byteLength;
   }
   return body;
+}
+
+/** The read the caller stopped waiting for. */
+export function givenUp(url: string): BideEtMusiqueError {
+  return new BideEtMusiqueError("timeout", `The call was abandoned before ${url} was read.`, {
+    url,
+    hint: "Nothing further was asked of the site.",
+  });
 }
 
 /** `Retry-After` carries either seconds or an HTTP date. */

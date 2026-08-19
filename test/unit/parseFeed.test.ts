@@ -95,18 +95,19 @@ describe("reading the entries", () => {
     expect(songs[0]!.artistName).toBe("Bide & Musique");
   });
 
-  // Decoding runs until the text stops changing, so a chevron the feed escaped
-  // twice comes back as the character. A title holding one is not a title
-  // holding markup, and nothing downstream reads these strings as markup.
-  it("resolves a chevron the feed escaped twice", () => {
+  // Decoding runs until the text stops changing, so what the feed escaped twice
+  // comes back as what the site wrote, and a site writes markup. Tags are then
+  // taken out the way they are on a page: a chevron the site published as text
+  // is lost, which is the price of no title ever reaching a field as markup.
+  it("keeps markup out of a title, whatever the feed escaped it into", () => {
     const { songs } = parseNewSongs(
-      feed([{ id: 4, line: "Un groupe - Le signe &amp;lt;b&amp;gt;" }]),
+      feed([{ id: 4, line: "Un groupe - Le signe &amp;lt;b&amp;gt; ici" }]),
       FEED_URL,
     );
 
-    expect(songs[0]!.title).toBe("Le signe <b>");
+    expect(songs[0]!.title).toBe("Le signe ici");
+    expect(songs[0]!.title).not.toMatch(/<[a-z/][^>]*>/i);
   });
-
   it("reads the day the feed published an entry as an ISO date", () => {
     const { songs } = parseNewSongs(ONE, FEED_URL);
 

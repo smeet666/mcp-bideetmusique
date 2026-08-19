@@ -10,13 +10,25 @@
 
 import { parseFailure } from "../errors.js";
 import type { NewSong, NewSongsFeed } from "../types.js";
-import { decodeEntities } from "./html.js";
+import { decodeEntities, textOf } from "./html.js";
 import { songUrl } from "./urls.js";
 
-const ITEM = /<item\b[^>]*>([\s\S]*?)<\/item>/gi;
-const TITLE = /<title>([\s\S]*?)<\/title>/i;
-const LINK = /<link>([\s\S]*?)<\/link>/i;
-const PUB_DATE = /<pubDate>([\s\S]*?)<\/pubDate>/i;
+/**
+ * How far a lazy match may run before a page is judged unreadable.
+ *
+ * Each of these elements holds one thing: a label, a cell, a row. Letting a
+ * match run to the end of the document lets a page that repeats an opening it
+ * never closes send the search back over everything that follows, once per
+ * opening, and the whole server waits on it. Each bound is an order of
+ * magnitude past what the site prints there.
+ */
+const INLINE_MAX = 400;
+const ROW_MAX = 8_000;
+
+const ITEM = new RegExp(String.raw`<item\b[^>]*>([\s\S]{0,${ROW_MAX}}?)</item>`, "gi");
+const TITLE = new RegExp(String.raw`<title>([\s\S]{0,${INLINE_MAX}}?)</title>`, "i");
+const LINK = new RegExp(String.raw`<link>([\s\S]{0,${INLINE_MAX}}?)</link>`, "i");
+const PUB_DATE = new RegExp(String.raw`<pubDate>([\s\S]{0,${INLINE_MAX}}?)</pubDate>`, "i");
 const SONG_LINK = /\/song\/(\d+)\.html/;
 
 /**
@@ -39,10 +51,14 @@ function decodeFeedText(text: string): string {
   let current = text;
   for (let pass = 0; pass < MAX_DECODE_PASSES; pass += 1) {
     const decoded = decodeEntities(current);
-    if (decoded === current) return current;
+    if (decoded === current) break;
     current = decoded;
   }
-  return current;
+
+  // Decoding turns what the feed escaped back into what the site wrote, and a
+  // site writes markup. A title is text, so the tags go the way they go on a
+  // page rather than reaching a field as a title that carries a tag.
+  return textOf(current);
 }
 
 /**
@@ -89,5 +105,8 @@ function readDate(raw: string | undefined): string | null {
   const at = new Date(raw.trim());
   if (Number.isNaN(at.getTime())) return null;
 
-  return at.toISOString().slice(0, 10);
+  // A year outside the four digits an ISO date holds is written with a sign and
+  // six digits, and taking its first ten characters names no day at all.
+  const day = at.toISOString().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
 }

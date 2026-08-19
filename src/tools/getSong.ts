@@ -120,9 +120,10 @@ export interface GetSongArgs {
 export async function runGetSong(
   client: BideEtMusiqueClient,
   args: GetSongArgs,
+  signal?: AbortSignal,
 ): Promise<ToolResult> {
   try {
-    const { data, cached } = await client.getSong(args.song_id.trim());
+    const { data, cached } = await client.getSong(args.song_id.trim(), signal);
 
     const notes: string[] = [];
     if (cached) notes.push("Served from this server's short-lived in-memory cache.");

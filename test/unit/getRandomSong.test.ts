@@ -197,10 +197,23 @@ describe("the record it answers with", () => {
     expect(textOfResult(result)).toContain("Une ligne de la fiche 12345");
   });
 
-  it("takes no argument at all", () => {
-    expect(getRandomSongInput.safeParse({}).success).toBe(true);
+  it("needs no argument, and refuses one it does not declare", () => {
+    expect(getRandomSongInput.parse({})).toEqual({ include_lyrics: true });
     expect(getRandomSongInput.safeParse({ song_id: "1734" }).success).toBe(false);
     expect(getRandomSongInput.safeParse({ seed: 4 }).success).toBe(false);
+  });
+
+  it("leaves the words out when asked, while still reporting the page has some", async () => {
+    const { client } = siteServing(new Set([12345]));
+
+    const result = await settle(
+      runGetRandomSong(client, { random: drawing(fractionFor(12345)), include_lyrics: false }),
+    );
+    const lyrics = payload(result).lyrics as { available: boolean; text: string | null };
+
+    expect(lyrics.available).toBe(true);
+    expect(lyrics.text).toBeNull();
+    expect(textOfResult(result)).not.toContain("Une ligne de la fiche");
   });
 });
 

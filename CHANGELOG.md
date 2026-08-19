@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-08-19
+
+The surface is settled: five tools, their arguments and their output schemas are
+what callers can build on, and a change to any of them will carry a major
+version. What follows is what this release adds and fixes over 0.3.0.
+
+### Added
+
+- A call the host abandons stops the read: the caller's signal reaches the
+  request, the retries between attempts, and the draws `get_random_song` makes.
+  A page under way is shared by the callers waiting for it and abandoned only
+  once the last of them has gone.
+- `get_random_song` takes `include_lyrics`, like `get_song`.
+
+### Fixed
+
+- A heading, a row, a cell and a feed entry are read within a bound. A page
+  repeating an opening it never closes was searched from every one of them, and
+  45 kB of such a page held the server for 2.7 seconds.
+- An address a page publishes that no reader can resolve drops the link, rather
+  than raising an error outside the six codes.
+- A note is one line. Notes quote what a caller asked for, and a quoted line
+  break opened a line of the answer that read as one this server wrote.
+- An error this server did not expect is reported as a failure to read rather
+  than as the site being unreachable, which invited a retry that could not help.
+- A day the calendar has no room for, a date outside four digits of year, and a
+  length past what a number counts exactly are left unstated rather than
+  reported as values.
+- A title the feed publishes reaches no field as markup.
+
 ## [0.3.0] - 2026-08-16
 
 ### Added
@@ -85,5 +115,6 @@ First release.
   configuration can lower, and the User-Agent always carries the project and an
   address where someone can be reached.
 
+[1.0.0]: https://github.com/smeet666/mcp-bideetmusique/releases/tag/v1.0.0
 [0.3.0]: https://github.com/smeet666/mcp-bideetmusique/releases/tag/v0.3.0
 [0.1.0]: https://github.com/smeet666/mcp-bideetmusique/releases/tag/v0.1.0

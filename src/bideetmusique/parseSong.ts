@@ -26,9 +26,21 @@ import { artistUrl, songUrl, toAbsoluteUrl } from "./urls.js";
  */
 const TAG_REST = String.raw`(?:[^>"]|"[^"]*")*`;
 
+/**
+ * How far a name or a title may run inside the heading.
+ *
+ * Both are one line of a page. Letting them run unbounded lets a page that
+ * repeats the opening without ever closing it send the search back over
+ * everything that follows, once per opening: the work then grows far faster
+ * than the page does, and the whole server waits on it. A bound well past any
+ * title the site prints keeps a real heading readable and a degenerate one
+ * cheap to refuse.
+ */
+const HEADING_FIELD_MAX = 400;
+
 /** The record's heading: the artist as a link, then the title, in one line. */
 const HEADING = new RegExp(
-  String.raw`<p[^>]*class="titrerosebg"[^>]*>\s*<a\s+href="/artist/(\d+)\.html"${TAG_REST}>([\s\S]*?)</a>\s*-\s*([\s\S]*?)</p>`,
+  String.raw`<p[^>]*class="titrerosebg"[^>]*>\s*<a\s+href="/artist/(\d+)\.html"${TAG_REST}>([\s\S]{0,${HEADING_FIELD_MAX}}?)</a>\s*-\s*([\s\S]{0,${HEADING_FIELD_MAX}}?)</p>`,
   "i",
 );
 
@@ -38,15 +50,33 @@ const SLEEVE =
 const THUMBNAIL =
   /class="pochette-fiche"[\s\S]{0,600}?<img[^>]+src="([^"]+\.(?:jpg|jpeg|png|gif))"/i;
 
+/**
+ * How far a lazy match may run before a page is judged unreadable.
+ *
+ * Each of these elements holds one thing: a label, a cell, a row. Letting a
+ * match run to the end of the document lets a page that repeats an opening it
+ * never closes send the search back over everything that follows, once per
+ * opening, and the whole server waits on it. Each bound is an order of
+ * magnitude past what the site prints there.
+ */
+const INLINE_MAX = 400;
+const CELL_MAX = 2_000;
+
 /** Fields are written as `Label : <span class="txtred2">value</span>`. */
-const FIELD = /([A-Za-zÀ-ÿ][^:<>{}]{1,40}?)\s*:\s*<span class="txtred2">([\s\S]*?)<\/span>/gi;
+const FIELD = new RegExp(
+  String.raw`([A-Za-zÀ-ÿ][^:<>{}]{1,40}?)\s*:\s*<span class="txtred2">([\s\S]{0,${CELL_MAX}}?)</span>`,
+  "gi",
+);
 
 /** The collapsible block holding the date, the related artists and the chart. */
 const EXTRA_BLOCK = /id="songinfos"/i;
 const ADDED_ON = /Ajout[ée]\s+le\s*:?\s*(\d{2})\/(\d{2})\/(\d{4})/i;
 const TOP50 = /Class[ée]\s+(\d+)\s+fois\s+dans\s+les\s+(\d+)\s+premiers/i;
 const SEE_ALSO = /Voir aussi\s*:?/i;
-const ARTIST_ANCHOR = /<a\s+href="\/artist\/(\d+)\.html"(?:[^>"]|"[^"]*")*>([\s\S]*?)<\/a>/gi;
+const ARTIST_ANCHOR = new RegExp(
+  String.raw`<a\s+href="/artist/(\d+)\.html"(?:[^>"]|"[^"]*")*>([\s\S]{0,${INLINE_MAX}}?)</a>`,
+  "gi",
+);
 
 /**
  * How many people keep the record as a favourite.
@@ -227,8 +257,17 @@ export function parseSongRecord(html: string, url: string, id: string): Song {
 function readAddedOn(record: string): string | null {
   const match = ADDED_ON.exec(record);
   if (!match) return null;
+
   const [, day, month, year] = match;
-  return `${year}-${month}-${day}`;
+  const iso = `${year}-${month}-${day}`;
+
+  // The site prints the day it catalogued a record, and a page can print
+  // something the calendar has no room for. An ISO-shaped string that names no
+  // day would be read as a date by everything downstream.
+  const at = new Date(`${iso}T00:00:00Z`);
+  if (Number.isNaN(at.getTime()) || at.toISOString().slice(0, 10) !== iso) return null;
+
+  return iso;
 }
 
 function readTop50(record: string): Top50 | null {
