@@ -8,8 +8,11 @@
  * an id nobody catalogued is not a record.
  */
 
+import { z } from "zod";
 import type { BideEtMusiqueClient } from "../bideetmusique/client.js";
 import { BideEtMusiqueError } from "../errors.js";
+import { givenUp } from "../bideetmusique/http.js";
+import { songUrl } from "../bideetmusique/urls.js";
 import { strictInput } from "./arguments.js";
 import { getSongOutputShape } from "./getSong.js";
 import { noteIfTextIsCut, ok, quotedBlock, toToolError } from "./shared.js";
@@ -25,7 +28,15 @@ export const getRandomSongDescription = [
   "When you show a record to a user, credit Bide & Musique and link the page.",
 ].join(" ");
 
-export const getRandomSongInput = strictInput({});
+export const getRandomSongInput = strictInput({
+  include_lyrics: z
+    .boolean()
+    .default(true)
+    .describe(
+      "Whether to return the transcription the drawn record's page carries. Browsing chains many " +
+        "calls, and a record with one runs to a few thousand characters.",
+    ),
+});
 
 export const getRandomSongOutputShape = getSongOutputShape;
 
@@ -40,20 +51,26 @@ const MAX_DRAWS = 5;
 export interface GetRandomSongOptions {
   /** Injected so a test states which id is drawn instead of hoping for one. */
   random?: () => number;
+  include_lyrics?: boolean;
 }
 
 export async function runGetRandomSong(
   client: BideEtMusiqueClient,
   options: GetRandomSongOptions = {},
+  signal?: AbortSignal,
 ): Promise<ToolResult> {
-  const random = options.random ?? Math.random;
-
   try {
-    const newest = await client.getNewestSongId();
+    const random = options?.random ?? Math.random;
+    const includeLyrics = options?.include_lyrics ?? true;
+
+    const newest = await client.getNewestSongId(signal);
     const highest = Number.parseInt(newest.data, 10);
 
     const drawn: string[] = [];
     for (let attempt = 0; attempt < MAX_DRAWS; attempt += 1) {
+      // A caller that stopped waiting is not owed another id, and the site is
+      // not owed another request.
+      if (signal?.aborted) throw givenUp(songUrl(drawn[drawn.length - 1] ?? "0"));
       const id = String(Math.floor(random() * highest) + 1);
       // Asking twice for an id already known to be unserved spends a request on
       // an answer this call already has.
@@ -61,7 +78,7 @@ export async function runGetRandomSong(
       drawn.push(id);
 
       try {
-        return answer(await client.getSong(id), drawn, newest.data);
+        return answer(await client.getSong(id, signal), drawn, newest.data, includeLyrics);
       } catch (error) {
         if (error instanceof BideEtMusiqueError && error.code === "not_found") continue;
         throw error;
@@ -82,6 +99,7 @@ function answer(
   outcome: Awaited<ReturnType<BideEtMusiqueClient["getSong"]>>,
   drawn: string[],
   highest: string,
+  includeLyrics: boolean,
 ): ToolResult {
   const { data, cached } = outcome;
 
@@ -100,7 +118,15 @@ function answer(
     );
   }
 
-  if (data.lyrics.available && data.lyrics.text === null) {
+  const lyricsText = includeLyrics ? data.lyrics.text : null;
+  if (data.lyrics.available && !includeLyrics) {
+    notes.push(
+      "This record carries a transcription, left out because 'include_lyrics' was false. Read it " +
+        "with get_song on this id.",
+    );
+  }
+
+  if (includeLyrics && data.lyrics.available && data.lyrics.text === null) {
     notes.push(
       "This record announces a transcription and none could be read out of it, so the words " +
         "come back null while the record still reports one.",
@@ -129,7 +155,7 @@ function answer(
     comments: data.comments,
     lyrics: {
       available: data.lyrics.available,
-      text: data.lyrics.text,
+      text: lyricsText,
       transcriber: data.lyrics.transcriber,
       rights_notice: data.lyrics.rightsNotice,
       url: data.lyrics.url,
@@ -148,8 +174,8 @@ function answer(
   ].filter((line): line is string => line !== null);
 
   const body =
-    data.lyrics.text !== null
-      ? `${lines.join("\n")}\n\n${quotedBlock("Paroles publiées par Bide & Musique :", data.lyrics.text)}`
+    lyricsText !== null
+      ? `${lines.join("\n")}\n\n${quotedBlock("Paroles publiées par Bide & Musique :", lyricsText)}`
       : lines.join("\n");
 
   noteIfTextIsCut(body, notes);

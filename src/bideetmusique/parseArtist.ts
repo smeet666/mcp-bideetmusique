@@ -12,7 +12,23 @@ import type { Artist, ArtistLink, DiscographyEntry, ExternalLink } from "../type
 import { textOf } from "./html.js";
 import { artistUrl, songUrl, toAbsoluteUrl } from "./urls.js";
 
-const NAME = /<div[^>]*class="titre-bloc"[^>]*>\s*<h2[^>]*>([\s\S]*?)<\/h2>/i;
+/**
+ * How far a lazy match may run before a page is judged unreadable.
+ *
+ * Each of these elements holds one thing: a label, a cell, a row. Letting a
+ * match run to the end of the document lets a page that repeats an opening it
+ * never closes send the search back over everything that follows, once per
+ * opening, and the whole server waits on it. Each bound is an order of
+ * magnitude past what the site prints there.
+ */
+const INLINE_MAX = 400;
+const CELL_MAX = 2_000;
+const ROW_MAX = 8_000;
+
+const NAME = new RegExp(
+  String.raw`<div[^>]*class="titre-bloc"[^>]*>\s*<h2[^>]*>([\s\S]{0,${INLINE_MAX}}?)</h2>`,
+  "i",
+);
 const PHOTO = /<img[^>]+src="(\/images\/photos\/[^"]+)"/i;
 
 /**
@@ -22,15 +38,24 @@ const PHOTO = /<img[^>]+src="(\/images\/photos\/[^"]+)"/i;
 const HEADER_ROW =
   /<tr>\s*(?:<td[^>]*>\s*<strong>([\s\S]*?)<\/strong>\s*<\/td>|<th[^>]*>([\s\S]*?)<\/th>)\s*<td[^>]*>([\s\S]*?)<\/td>/gi;
 
-const DISCOGRAPHY_ROW = /<tr class="p[01]">([\s\S]*?)<\/tr>/gi;
-const SONG_ANCHOR = /<a\s+href="\/song\/(\d+)\.html"(?:[^>"]|"[^"]*")*>([\s\S]*?)<\/a>/i;
-const CELL = /<td[^>]*>([\s\S]*?)<\/td>/gi;
+const DISCOGRAPHY_ROW = new RegExp(
+  String.raw`<tr class="p[01]">([\s\S]{0,${ROW_MAX}}?)</tr>`,
+  "gi",
+);
+const SONG_ANCHOR = new RegExp(
+  String.raw`<a\s+href="/song/(\d+)\.html"(?:[^>"]|"[^"]*")*>([\s\S]{0,${INLINE_MAX}}?)</a>`,
+  "i",
+);
+const CELL = new RegExp(String.raw`<td[^>]*>([\s\S]{0,${CELL_MAX}}?)</td>`, "gi");
 const YEAR_CELL = /^\d{4}$/;
 const THUMBNAIL = /<img[^>]+src="(\/images\/thumb\d*\/\d+\.[a-z]{3,4})"/i;
 const SLEEVE = /show-image\.html\?I=(\/images\/pochettes\/\d+\.[a-z]{3,4})/i;
 const IMAGE_ALT = /<img[^>]+\balt\s*=\s*"([^"]*)"/gi;
 
-const ANCHOR = /<a\s+href="([^"]+)"(?:[^>"]|"[^"]*")*>([\s\S]*?)<\/a>/gi;
+const ANCHOR = new RegExp(
+  String.raw`<a\s+href="([^"]+)"(?:[^>"]|"[^"]*")*>([\s\S]{0,${INLINE_MAX}}?)</a>`,
+  "gi",
+);
 const ARTIST_HREF = /^\/artist\/(\d+)\.html$/i;
 
 /** Fold a label so "Autre alias" and "Autres alias" name the same field. */
@@ -124,7 +149,14 @@ function readExternalLinks(cell: string | undefined): ExternalLink[] {
     const href = match[1] ?? "";
     const label = textOf(match[2] ?? "");
     if (href === "" || label === "") continue;
-    links.push({ label, url: toAbsoluteUrl(href) });
+
+    // A page publishes addresses people typed, and one of them can be no
+    // address. Dropping it is honest; keeping the label beside nothing would
+    // offer a link that leads nowhere.
+    const url = toAbsoluteUrl(href);
+    if (url === null) continue;
+
+    links.push({ label, url });
   }
   return links;
 }

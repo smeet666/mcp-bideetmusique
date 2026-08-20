@@ -16,7 +16,7 @@ import { invalidInput, parseFailure } from "../errors.js";
 import type { Artist, NewSongsFeed, SearchPage, Song } from "../types.js";
 import { TtlLruCache } from "./cache.js";
 import type { Fetched } from "./http.js";
-import { fetchHtml } from "./http.js";
+import { fetchHtml, givenUp } from "./http.js";
 import { parseArtistPage } from "./parseArtist.js";
 import { parseNewSongs } from "./parseFeed.js";
 import { parseSearchPage } from "./parseSearch.js";
@@ -43,6 +43,13 @@ export interface Outcome<T> {
   data: T;
   /** True when served from the in-memory cache rather than the network. */
   cached: boolean;
+}
+
+interface InFlightRead {
+  promise: Promise<unknown>;
+  /** Fires when the last caller interested in this read has gone. */
+  controller: AbortController;
+  waiting: number;
 }
 
 export interface SearchInput {
@@ -84,8 +91,13 @@ export class BideEtMusiqueClient {
    * The cache is filled once a page has been read and parsed, so between the
    * request going out and the answer coming back the address is absent from it.
    * Two tools wanting the same page in one turn would each miss and each ask.
+   *
+   * A read is joined rather than repeated, so it belongs to no single caller:
+   * `waiting` counts the callers still interested, and the request is abandoned
+   * only when that count reaches zero. One caller giving up says nothing about
+   * what the others still want.
    */
-  private readonly inFlight = new Map<string, Promise<unknown>>();
+  private readonly inFlight = new Map<string, InFlightRead>();
 
   constructor(options: BideEtMusiqueClientOptions = {}) {
     this.config = withGuarantees(options.config ?? loadConfig());
@@ -103,23 +115,27 @@ export class BideEtMusiqueClient {
    * single record is read as the one row it is: reporting the missing results
    * table as a failure would deny a song the site did find.
    */
-  async search(input: SearchInput): Promise<Outcome<SearchPage>> {
+  async search(input: SearchInput, signal?: AbortSignal): Promise<Outcome<SearchPage>> {
     const url = buildSearchUrl(input);
-    return this.fetchParsed(url, ({ html, finalUrl }) => {
-      const songId = extractSongId(finalUrl);
-      if (songId) {
-        return {
-          songs: [parseSongPage(html, finalUrl, songId)],
-          totalMatches: 1,
-          pageServed: 1,
-          pageCount: 1,
-          hasMorePages: false,
-          unreadableRows: 0,
-          redirectedToSong: true,
-        };
-      }
-      return parseSearchPage(html, finalUrl);
-    });
+    return this.fetchParsed(
+      url,
+      ({ html, finalUrl }) => {
+        const songId = extractSongId(finalUrl);
+        if (songId) {
+          return {
+            songs: [parseSongPage(html, finalUrl, songId)],
+            totalMatches: 1,
+            pageServed: 1,
+            pageCount: 1,
+            hasMorePages: false,
+            unreadableRows: 0,
+            redirectedToSong: true,
+          };
+        }
+        return parseSearchPage(html, finalUrl);
+      },
+      signal,
+    );
   }
 
   /**
@@ -129,7 +145,7 @@ export class BideEtMusiqueClient {
    * published as a library: a malformed id would otherwise be asked of the site
    * and come back as a 404 that reads like an absent song.
    */
-  async getSong(id: string): Promise<Outcome<Song>> {
+  async getSong(id: string, signal?: AbortSignal): Promise<Outcome<Song>> {
     if (!SONG_ID.test(id)) {
       throw invalidInput(
         `"${id}" is not a Bide & Musique song id.`,
@@ -137,11 +153,15 @@ export class BideEtMusiqueClient {
       );
     }
     const url = songUrl(id);
-    return this.fetchParsed(url, ({ html, finalUrl }) => parseSongRecord(html, finalUrl, id));
+    return this.fetchParsed(
+      url,
+      ({ html, finalUrl }) => parseSongRecord(html, finalUrl, id),
+      signal,
+    );
   }
 
   /** Read one artist page: who they are, and what the collection holds of them. */
-  async getArtist(id: string): Promise<Outcome<Artist>> {
+  async getArtist(id: string, signal?: AbortSignal): Promise<Outcome<Artist>> {
     if (!ARTIST_ID.test(id)) {
       throw invalidInput(
         `"${id}" is not a Bide & Musique artist id.`,
@@ -149,13 +169,17 @@ export class BideEtMusiqueClient {
       );
     }
     const url = artistUrl(id);
-    return this.fetchParsed(url, ({ html, finalUrl }) => parseArtistPage(html, finalUrl, id));
+    return this.fetchParsed(
+      url,
+      ({ html, finalUrl }) => parseArtistPage(html, finalUrl, id),
+      signal,
+    );
   }
 
   /** The records the collection has just catalogued, newest first. */
-  async getNewSongs(): Promise<Outcome<NewSongsFeed>> {
+  async getNewSongs(signal?: AbortSignal): Promise<Outcome<NewSongsFeed>> {
     const url = newSongsFeedUrl();
-    return this.fetchParsed(url, ({ html, finalUrl }) => parseNewSongs(html, finalUrl));
+    return this.fetchParsed(url, ({ html, finalUrl }) => parseNewSongs(html, finalUrl), signal);
   }
 
   /**
@@ -170,8 +194,8 @@ export class BideEtMusiqueClient {
    * wanting both in one turn costs the site one request whether the two calls
    * follow each other or overlap.
    */
-  async getNewestSongId(): Promise<Outcome<string>> {
-    const { data, cached } = await this.getNewSongs();
+  async getNewestSongId(signal?: AbortSignal): Promise<Outcome<string>> {
+    const { data, cached } = await this.getNewSongs(signal);
 
     let highest = 0;
     for (const song of data.songs) {
@@ -197,7 +221,11 @@ export class BideEtMusiqueClient {
    * The cached value is the parsed result rather than the raw page, which also
    * keeps a few dozen kilobytes of markup per entry out of memory.
    */
-  private async fetchParsed<T>(url: string, parse: (fetched: Fetched) => T): Promise<Outcome<T>> {
+  private async fetchParsed<T>(
+    url: string,
+    parse: (fetched: Fetched) => T,
+    signal?: AbortSignal,
+  ): Promise<Outcome<T>> {
     const hit = this.cache.get(url);
     if (hit !== undefined) {
       this.logger.debug(`cache hit ${url}`);
@@ -207,29 +235,65 @@ export class BideEtMusiqueClient {
     const underWay = this.inFlight.get(url);
     if (underWay !== undefined) {
       this.logger.debug(`joining the read under way for ${url}`);
-      return { data: (await underWay) as T, cached: true };
+      // Joined rather than cached: the page is coming off the network right
+      // now, and saying otherwise would credit a cache that holds nothing yet.
+      return { data: (await this.awaited(underWay, signal, url)) as T, cached: false };
     }
 
-    const read = (async () => {
+    const shared = new AbortController();
+    const entry: InFlightRead = { promise: undefined as never, controller: shared, waiting: 0 };
+
+    entry.promise = (async () => {
       const fetched = await fetchHtml(url, {
         config: this.config,
         limiter: this.limiter,
         logger: this.logger,
         ...(this.fetchImpl ? { fetchImpl: this.fetchImpl } : {}),
+        signal: shared.signal,
       });
 
       const data = parse(fetched);
       this.cache.set(url, data);
       return data;
     })();
+    // Nobody is left to hear a rejection once every caller has walked away.
+    entry.promise.catch(() => {});
 
     // Dropped on failure as well as on success, so a bad minute is not
     // remembered as the answer for every later caller.
-    this.inFlight.set(url, read);
+    this.inFlight.set(url, entry);
     try {
-      return { data: (await read) as T, cached: false };
+      return { data: (await this.awaited(entry, signal, url)) as T, cached: false };
     } finally {
-      this.inFlight.delete(url);
+      if (this.inFlight.get(url) === entry) this.inFlight.delete(url);
+    }
+  }
+
+  /**
+   * One caller's view of a shared read.
+   *
+   * The caller stops waiting the moment its own signal fires, while the read
+   * carries on for whoever else joined it. The request itself is abandoned once
+   * the last of them has gone.
+   */
+  private async awaited(entry: InFlightRead, signal: AbortSignal | undefined, url: string) {
+    entry.waiting += 1;
+
+    // A caller with no signal can never give up, so its share of the count is
+    // never released: the read stays wanted for as long as it is waiting.
+    if (signal === undefined) return entry.promise;
+
+    try {
+      return await Promise.race([
+        entry.promise,
+        new Promise<never>((_, reject) => {
+          if (signal.aborted) return reject(givenUp(url));
+          signal.addEventListener("abort", () => reject(givenUp(url)), { once: true });
+        }),
+      ]);
+    } finally {
+      entry.waiting -= 1;
+      if (entry.waiting <= 0) entry.controller.abort();
     }
   }
 }

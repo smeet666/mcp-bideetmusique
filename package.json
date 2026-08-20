@@ -1,6 +1,6 @@
 {
   "name": "mcp-bideetmusique",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "description": "MCP server for Bide & Musique. Search the collection of forgotten French songs by performer or by title. No API key required.",
   "type": "module",
   "license": "MIT",
@@ -83,6 +83,6 @@
     "prettier": "^3.4.2",
     "tsup": "^8.5.1",
     "typescript": "^5.7.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   }
 }

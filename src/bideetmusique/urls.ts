@@ -121,6 +121,17 @@ export function isBideHost(rawUrl: string): boolean {
   return ALLOWED_HOSTS.has(parsed.hostname.toLowerCase());
 }
 
-export function toAbsoluteUrl(href: string): string {
-  return new URL(href, BASE_URL).toString();
+/**
+ * An address the site published, resolved against the site itself.
+ *
+ * A page publishes addresses written by people, and one of them can be no
+ * address at all. Nothing is invented in its place: the caller drops the link
+ * rather than receiving an error the six codes never named.
+ */
+export function toAbsoluteUrl(href: string): string | null {
+  try {
+    return new URL(href, BASE_URL).toString();
+  } catch {
+    return null;
+  }
 }

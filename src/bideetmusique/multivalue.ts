@@ -12,7 +12,18 @@
 import { decodeEntities, textOf } from "./html.js";
 
 /** A tag's attributes may hold quoted markup, so the closing `>` is found outside quotes. */
-const ANCHOR = /<a\b(?:[^>"]|"[^"]*")*>([\s\S]*?)<\/a>/gi;
+/**
+ * How far a lazy match may run before a page is judged unreadable.
+ *
+ * Each of these elements holds one thing: a label, a cell, a row. Letting a
+ * match run to the end of the document lets a page that repeats an opening it
+ * never closes send the search back over everything that follows, once per
+ * opening, and the whole server waits on it. Each bound is an order of
+ * magnitude past what the site prints there.
+ */
+const INLINE_MAX = 400;
+
+const ANCHOR = new RegExp(String.raw`<a\b(?:[^>"]|"[^"]*")*>([\s\S]{0,${INLINE_MAX}}?)</a>`, "gi");
 
 /**
  * Separators the site puts between values.

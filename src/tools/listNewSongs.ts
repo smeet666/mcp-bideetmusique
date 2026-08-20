@@ -73,9 +73,10 @@ export interface ListNewSongsArgs {
 export async function runListNewSongs(
   client: BideEtMusiqueClient,
   args: ListNewSongsArgs,
+  signal?: AbortSignal,
 ): Promise<ToolResult> {
   try {
-    const { data, cached } = await client.getNewSongs();
+    const { data, cached } = await client.getNewSongs(signal);
     const shown = data.songs.slice(0, args.limit);
 
     const notes: string[] = [];

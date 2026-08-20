@@ -61,5 +61,10 @@ export function parseDuration(raw: string | null | undefined): Duration {
   const precision: DurationPrecision =
     seconds !== null ? "second" : minutes !== null ? "minute" : "hour";
 
+  // Past what a number counts exactly, the arithmetic stops meaning the figures
+  // the page printed. The line is repeated as published and the seconds are
+  // left unstated rather than approximated.
+  if (!Number.isSafeInteger(total)) return { text, ...UNREADABLE };
+
   return { text, seconds: total, precision };
 }

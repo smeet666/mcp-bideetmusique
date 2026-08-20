@@ -214,6 +214,7 @@ const INVISIBLE_MATCH: Partial<Record<SearchType, string>> = {
 export async function runSearchSongs(
   client: BideEtMusiqueClient,
   args: SearchSongsArgs,
+  signal?: AbortSignal,
 ): Promise<ToolResult> {
   try {
     // Trimming happens before the emptiness check: a whitespace-only query is as
@@ -239,11 +240,14 @@ export async function runSearchSongs(
       );
     }
 
-    const { data, cached } = await client.search({
-      query,
-      searchType: args.search_type,
-      page: args.page,
-    });
+    const { data, cached } = await client.search(
+      {
+        query,
+        searchType: args.search_type,
+        page: args.page,
+      },
+      signal,
+    );
 
     const notes: string[] = [];
     if (cached) notes.push("Served from this server's short-lived in-memory cache.");

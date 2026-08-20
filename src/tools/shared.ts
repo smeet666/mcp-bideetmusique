@@ -22,6 +22,18 @@ export interface ToolResult {
  * keeps the two apart, and costs nothing: the structured output still carries
  * the text exactly as it was published.
  */
+/**
+ * A note folded onto the single line it is.
+ *
+ * Notes quote what a caller asked for and what the site published, and they are
+ * composed after the body has been made safe. A quoted line break would start a
+ * line of the answer that reads as one this server wrote, so the break becomes
+ * a space and the quoted text stays where it belongs.
+ */
+function oneLine(note: string): string {
+  return note.replace(/\s*[\r\n]+\s*/g, " ").trim();
+}
+
 function indentMarkerLines(body: string): string {
   return body.replace(/^(Note:|Source:)/gm, " $1");
 }
@@ -78,7 +90,7 @@ export function ok(
   text: string,
   notes: string[] = [],
 ): ToolResult {
-  const trailer = notes.map((note) => `Note: ${note}`).join("\n");
+  const trailer = notes.map((note) => `Note: ${oneLine(note)}`).join("\n");
   const budget = MAX_TEXT_MIRROR_CHARS - (trailer ? trailer.length + 2 : 0);
   const body = truncate(indentMarkerLines(text), Math.max(0, budget));
 
@@ -93,16 +105,22 @@ export function ok(
  * tool's declared output schema, which an error payload does not satisfy.
  */
 export function toToolError(error: unknown): ToolResult {
+  // An error the taxonomy never named is a defect in this server, and
+  // `network_error` would invite a caller to try again against a site that was
+  // never the problem. `parse_failure` is the code for an answer this server
+  // could not turn into a result, which is what happened.
   const known =
     error instanceof BideEtMusiqueError
       ? error
       : new BideEtMusiqueError(
-          "network_error",
+          "parse_failure",
           error instanceof Error ? error.message : String(error),
         );
 
-  const lines = [`[${known.code}] ${known.message}`];
-  if (known.details.hint) lines.push(`Hint: ${known.details.hint}`);
+  // Both lines are written by this server, so nothing quoted inside them may
+  // start a line of its own and be read as one.
+  const lines = [`[${known.code}] ${oneLine(known.message)}`];
+  if (known.details.hint) lines.push(`Hint: ${oneLine(known.details.hint)}`);
 
   return { content: [{ type: "text", text: lines.join("\n") }], isError: true };
 }
