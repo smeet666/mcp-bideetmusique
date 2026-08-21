@@ -141,14 +141,24 @@ function artistPage(options: ArtistPageOptions = {}): string {
       : (options.heading ?? `<div class="titre-bloc"><h2>${name}</h2></div>`);
 
   const rows: string[] = [];
-  if (surname) rows.push(headerRow(headerShape, "Nom", surname));
-  if (firstName) rows.push(headerRow(headerShape, "Prénom", firstName));
-  if (nationality) rows.push(headerRow(headerShape, "Nationalité", nationality));
-  if (birthDate) rows.push(headerRow(headerShape, "Date de naissance", birthDate));
+  if (surname) {
+    rows.push(headerRow(headerShape, "Nom", surname));
+  }
+  if (firstName) {
+    rows.push(headerRow(headerShape, "Prénom", firstName));
+  }
+  if (nationality) {
+    rows.push(headerRow(headerShape, "Nationalité", nationality));
+  }
+  if (birthDate) {
+    rows.push(headerRow(headerShape, "Date de naissance", birthDate));
+  }
   if (aliases.length > 0) {
     rows.push(headerRow(headerShape, aliasLabel, aliases.join("<br />\n")));
   }
-  if (presentation) rows.push(headerRow(headerShape, "Présentation", presentation));
+  if (presentation) {
+    rows.push(headerRow(headerShape, "Présentation", presentation));
+  }
   if (seeAlso.length > 0) {
     rows.push(
       headerRow(
@@ -296,7 +306,9 @@ interface StructuredArtist {
 }
 
 function artistPayload(result: ToolResult): StructuredArtist {
-  if (!result.structuredContent) throw new Error("the tool returned no structuredContent");
+  if (!result.structuredContent) {
+    throw new Error("the tool returned no structuredContent");
+  }
   return result.structuredContent as unknown as StructuredArtist;
 }
 
@@ -319,11 +331,17 @@ async function run(options: ArtistPageOptions = {}, limit = 100): Promise<ToolRe
 function allScalars(value: unknown, skipKeys: string[] = []): Array<string | number> {
   const found: Array<string | number> = [];
   const walk = (node: unknown): void => {
-    if (typeof node === "string" || typeof node === "number") found.push(node);
-    else if (Array.isArray(node)) for (const entry of node) walk(entry);
-    else if (node && typeof node === "object") {
+    if (typeof node === "string" || typeof node === "number") {
+      found.push(node);
+    } else if (Array.isArray(node)) {
+      for (const entry of node) {
+        walk(entry);
+      }
+    } else if (node && typeof node === "object") {
       for (const [key, entry] of Object.entries(node)) {
-        if (skipKeys.includes(key)) continue;
+        if (skipKeys.includes(key)) {
+          continue;
+        }
         walk(entry);
       }
     }
@@ -1018,7 +1036,9 @@ describe("rule 12 — no comment count, ever", () => {
     const payload = artistPayload(result);
 
     for (const value of allScalars(payload)) {
-      if (typeof value === "string") expect(value.toLowerCase()).not.toContain("commentaire");
+      if (typeof value === "string") {
+        expect(value.toLowerCase()).not.toContain("commentaire");
+      }
     }
     expect(textOfResult(result)).not.toMatch(/commentaire/i);
   });

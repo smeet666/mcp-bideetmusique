@@ -211,7 +211,9 @@ describe("two reads of the same address at once", () => {
       config: loadConfig({}),
       fetchImpl: async () => {
         attempts += 1;
-        if (attempts === 1) return new Response("nope", { status: 404 });
+        if (attempts === 1) {
+          return new Response("nope", { status: 404 });
+        }
         return htmlResponse(fixtureBytes("search-page1.html"));
       },
     });

@@ -39,7 +39,9 @@ export function linkedValues(html: string): string[] {
   ANCHOR.lastIndex = 0;
   for (let match = ANCHOR.exec(html); match !== null; match = ANCHOR.exec(html)) {
     const value = textOf(match[1] ?? "");
-    if (value !== "") values.push(value);
+    if (value !== "") {
+      values.push(value);
+    }
   }
   return values;
 }
@@ -64,6 +66,8 @@ export function splitValues(text: string): string[] {
  */
 export function fieldValues(html: string): string[] {
   const linked = linkedValues(html);
-  if (linked.length > 0) return linked;
+  if (linked.length > 0) {
+    return linked;
+  }
   return splitValues(textOf(html));
 }

@@ -61,6 +61,17 @@ const ORDERING_NOTE = /order/i;
  */
 const INVISIBLE_MATCH_NOTE = /match[^.]*\brows?\b[^.]*\b(do|does)\s+not\s+(show|carry)/i;
 
+/** The address a fetch was called with, whichever of the three shapes it took. */
+function addressOf(input: Parameters<typeof fetch>[0]): string {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.href;
+  }
+  return input.url;
+}
+
 function notesMatching(notes: string[], ...patterns: RegExp[]): string[] {
   return notes.filter((note) => patterns.every((pattern) => pattern.test(note)));
 }
@@ -69,7 +80,7 @@ function notesMatching(notes: string[], ...patterns: RegExp[]): string[] {
 function recordingFetch(html: string): { urls: string[]; fetchImpl: typeof fetch } {
   const urls: string[] = [];
   const fetchImpl = (async (input: Parameters<typeof fetch>[0]) => {
-    urls.push(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+    urls.push(addressOf(input));
     return htmlResponse(bytesOf(html));
   }) as unknown as typeof fetch;
   return { urls, fetchImpl };

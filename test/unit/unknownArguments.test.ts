@@ -172,7 +172,7 @@ describe("rule 17 — the tool never contacts the site in order to refuse", () =
  * runs, so both paths open with the same code and name the argument at fault.
  */
 describe("every refusal of an argument opens with its error code", () => {
-  const outsideTheDeclaration: Array<[string, unknown]> = [
+  const outsideTheDeclaration: [string, unknown][] = [
     ["a page below the range", { query: "x", search_type: "title", page: 0 }],
     ["a page above the range", { query: "x", search_type: "title", page: 201 }],
     ["a page that is not whole", { query: "x", search_type: "title", page: 1.5 }],

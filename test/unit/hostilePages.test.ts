@@ -29,7 +29,9 @@ function outcome(run: () => unknown): string {
     run();
     return "returned";
   } catch (error) {
-    if (error instanceof BideEtMusiqueError) return error.code;
+    if (error instanceof BideEtMusiqueError) {
+      return error.code;
+    }
     throw error;
   }
 }

@@ -126,7 +126,9 @@ export async function runGetSong(
     const { data, cached } = await client.getSong(args.song_id.trim(), signal);
 
     const notes: string[] = [];
-    if (cached) notes.push("Served from this server's short-lived in-memory cache.");
+    if (cached) {
+      notes.push("Served from this server's short-lived in-memory cache.");
+    }
 
     // What a record does not state is worth saying out loud: a caller reading a
     // null cannot tell a field the site left blank from one this server failed
@@ -211,22 +213,22 @@ export async function runGetSong(
 
     const lines = [
       `${data.artist.name} · ${data.title}`,
-      data.year !== null ? `Année : ${data.year}` : null,
+      data.year === null ? null : `Année : ${data.year}`,
       data.writers.length > 0 ? `Auteurs compositeurs : ${data.writers.join(", ")}` : null,
       `Durée : ${data.duration.text}`,
       data.labels.length > 0 ? `Label : ${data.labels.join(", ")}` : null,
-      data.catalogueReference !== null ? `Référence : ${data.catalogueReference}` : null,
-      data.top50 !== null
-        ? `Au TOP 50 de B&M : classé ${data.top50.times} fois dans les ${data.top50.within} premiers`
-        : null,
+      data.catalogueReference === null ? null : `Référence : ${data.catalogueReference}`,
+      data.top50 === null
+        ? null
+        : `Au TOP 50 de B&M : classé ${data.top50.times} fois dans les ${data.top50.within} premiers`,
       `song_id : ${data.id} · artist_id : ${data.artist.id}`,
       data.url,
     ].filter((line): line is string => line !== null);
 
     const body =
-      lyricsText !== null
-        ? `${lines.join("\n")}\n\n${quotedBlock("Paroles publiées par Bide & Musique :", lyricsText)}`
-        : lines.join("\n");
+      lyricsText === null
+        ? lines.join("\n")
+        : `${lines.join("\n")}\n\n${quotedBlock("Paroles publiées par Bide & Musique :", lyricsText)}`;
 
     noteIfTextIsCut(body, notes);
 

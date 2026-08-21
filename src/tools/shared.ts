@@ -73,7 +73,9 @@ export function noteIfTextIsCut(body: string, notes: string[]): void {
   const trailer = [...notes, CUT_NOTE].map((note) => `Note: ${note}`).join("\n");
   const budget = Math.max(0, MAX_TEXT_MIRROR_CHARS - (trailer.length + 2));
 
-  if (body.length > budget) notes.push(CUT_NOTE);
+  if (body.length > budget) {
+    notes.push(CUT_NOTE);
+  }
 }
 
 /**
@@ -120,12 +122,16 @@ export function toToolError(error: unknown): ToolResult {
   // Both lines are written by this server, so nothing quoted inside them may
   // start a line of its own and be read as one.
   const lines = [`[${known.code}] ${oneLine(known.message)}`];
-  if (known.details.hint) lines.push(`Hint: ${oneLine(known.details.hint)}`);
+  if (known.details.hint) {
+    lines.push(`Hint: ${oneLine(known.details.hint)}`);
+  }
 
   return { content: [{ type: "text", text: lines.join("\n") }], isError: true };
 }
 
 export function truncate(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text;
+  if (text.length <= maxChars) {
+    return text;
+  }
   return `${text.slice(0, maxChars - 1).trimEnd()}…`;
 }

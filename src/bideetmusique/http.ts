@@ -76,6 +76,161 @@ export interface Fetched {
 }
 
 /**
+ * The pause owed before one attempt, and the two moments a caller can have gone.
+ *
+ * A caller that stopped waiting is not owed another request, and the site is not
+ * owed one either. That is checked before the wait and again after it, because a
+ * backoff can be seconds long and the answer would be thrown away regardless.
+ */
+async function waitBeforeAttempt(
+  attempt: number,
+  askedWaitMs: number | null,
+  context: { url: string; deps: HttpDeps; abandoned: () => boolean },
+): Promise<void> {
+  const { url, deps, abandoned } = context;
+  if (abandoned()) {
+    throw givenUp(url);
+  }
+  if (attempt === 0) {
+    return;
+  }
+
+  const delay = Math.min(askedWaitMs ?? backoffDelay(attempt - 1), BACKOFF_MAX_MS);
+  deps.logger.info(`retry ${attempt}/${deps.config.maxRetries} in ${delay}ms for ${url}`);
+  await sleep(delay);
+
+  if (abandoned()) {
+    throw givenUp(url);
+  }
+}
+
+/** One exchange with the site, as it came back. */
+interface Exchange {
+  status: number;
+  body: string;
+  finalUrl: string;
+  retryAfterMs: number | null;
+}
+
+/**
+ * Ask once, and read what came back.
+ *
+ * The pacing claim sits here, before the request, so every attempt of a retry
+ * chain claims its own slot: the chain runs inside one queue slot, and the
+ * claim is the only thing keeping its attempts apart.
+ */
+async function fetchOnce(url: string, deps: HttpDeps, doFetch: typeof fetch): Promise<Exchange> {
+  const { config, limiter } = deps;
+  await limiter.beforeRequest();
+
+  const response = await doFetch(url, {
+    headers: {
+      "User-Agent": config.userAgent,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+    },
+    redirect: "follow",
+    // Whichever comes first: the caller giving up, or this client's own
+    // patience running out.
+    signal: deps.signal
+      ? AbortSignal.any([deps.signal, AbortSignal.timeout(config.timeoutMs)])
+      : AbortSignal.timeout(config.timeoutMs),
+  });
+
+  return {
+    status: response.status,
+    // A stub may leave `url` empty, which is not an address to report.
+    finalUrl: response.url || url,
+    retryAfterMs: parseRetryAfter(response.headers.get("retry-after")),
+    body: decodeHtml(await readBounded(response, url), response.headers.get("content-type")),
+  };
+}
+
+/**
+ * What one answer from the site amounts to.
+ *
+ * Three outcomes and no fourth: the page is usable, the address holds nothing
+ * or the site refuses outright, or it is asking to be left alone for a while.
+ * Reading this apart from the loop keeps the loop about attempts and waits,
+ * which is the part where a mistake costs a volunteer-run site traffic it never
+ * asked for.
+ */
+type Answer =
+  | { kind: "usable" }
+  | { kind: "refused"; error: BideEtMusiqueError }
+  | {
+      kind: "again";
+      error: BideEtMusiqueError;
+      waitMs: number | null;
+      penalise: boolean;
+      because: string;
+    };
+
+function readAnswer(
+  url: string,
+  status: number,
+  body: string,
+  retryAfterMs: number | null,
+  ownGuessMs: number,
+): Answer {
+  if (status === 429 || status === 503) {
+    return {
+      kind: "again",
+      error: rateLimited(url, retryAfterMs ?? ownGuessMs),
+      waitMs: retryAfterMs,
+      penalise: true,
+      because: "rate limited",
+    };
+  }
+
+  // A 403 refuses rather than asking for patience: three more requests would be
+  // three more refusals, and the site is run by volunteers.
+  if (status === 403) {
+    return {
+      kind: "refused",
+      error: new BideEtMusiqueError("rate_limited", `Bide & Musique refused to serve ${url}.`, {
+        url,
+        status,
+        hint: "The site declined this request rather than asking to slow down.",
+      }),
+    };
+  }
+  if (status === 404) {
+    return { kind: "refused", error: notFound(url, "that address") };
+  }
+  if (status >= 500) {
+    return {
+      kind: "again",
+      error: upstreamError(url, status),
+      waitMs: null,
+      penalise: false,
+      because: `status ${status}`,
+    };
+  }
+  if (status >= 400) {
+    return { kind: "refused", error: upstreamError(url, status) };
+  }
+
+  const trimmed = body.trim();
+  if (trimmed.length < MIN_PLAUSIBLE_HTML && !CLOSES_ITS_ROOT.test(trimmed)) {
+    // A 200 carrying too few bytes to be a page is worth another attempt, since
+    // a site under load answers that way. What it is not is evidence of rate
+    // limiting: the exchange succeeded and the body was unreadable, so once the
+    // attempts run out that is what gets reported. Pacing still backs off,
+    // which costs nothing and helps if the site was struggling.
+    return {
+      kind: "again",
+      error: parseFailure(url, "the answer was too short to be a page"),
+      waitMs: null,
+      penalise: true,
+      because: `implausibly short body (${trimmed.length} bytes)`,
+    };
+  }
+
+  return { kind: "usable" };
+}
+
+/**
  * Fetch one page as decoded HTML, retrying transient conditions.
  *
  * The retry loop and its sleeps run inside a single limiter slot, so a queued
@@ -86,7 +241,7 @@ export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
   const doFetch = deps.fetchImpl ?? fetch;
   const abandoned = () => deps.signal?.aborted === true;
 
-  return limiter.schedule(async () => {
+  return await limiter.schedule(async () => {
     let lastError: BideEtMusiqueError | undefined;
 
     // Set when the site says how long to stay away; it replaces our own guess
@@ -95,44 +250,18 @@ export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
     let askedWaitMs: number | null = null;
 
     for (let attempt = 0; attempt <= config.maxRetries; attempt += 1) {
-      if (abandoned()) throw givenUp(url);
-      if (attempt > 0) {
-        const delay = Math.min(askedWaitMs ?? backoffDelay(attempt - 1), BACKOFF_MAX_MS);
-        askedWaitMs = null;
-        logger.info(`retry ${attempt}/${config.maxRetries} in ${delay}ms for ${url}`);
-        await sleep(delay);
-        if (abandoned()) throw givenUp(url);
-      }
+      await waitBeforeAttempt(attempt, askedWaitMs, { url, deps, abandoned });
+      askedWaitMs = null;
 
-      let status: number;
-      let body: string;
-      let finalUrl = url;
-      let retryAfterMs: number | null = null;
+      let answer: Exchange;
       try {
-        await limiter.beforeRequest();
-        const response = await doFetch(url, {
-          headers: {
-            "User-Agent": config.userAgent,
-            Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-          },
-          redirect: "follow",
-          // Whichever comes first: the caller giving up, or this client's own
-          // patience running out.
-          signal: deps.signal
-            ? AbortSignal.any([deps.signal, AbortSignal.timeout(config.timeoutMs)])
-            : AbortSignal.timeout(config.timeoutMs),
-        });
-        status = response.status;
-        // A stub may leave `url` empty, which is not an address to report.
-        finalUrl = response.url || url;
-        retryAfterMs = parseRetryAfter(response.headers.get("retry-after"));
-        body = decodeHtml(await readBounded(response, url), response.headers.get("content-type"));
+        answer = await fetchOnce(url, deps, doFetch);
       } catch (error) {
         lastError = asTransportError(error, url);
         logger.debug(`${lastError.code} for ${url}: ${lastError.message}`);
         continue;
       }
+      const { status, body, finalUrl, retryAfterMs } = answer;
 
       // Redirects are followed, so the address the request ended at is the one
       // the body came from. A body read from anywhere else would enter an answer
@@ -142,40 +271,18 @@ export async function fetchHtml(url: string, deps: HttpDeps): Promise<Fetched> {
         throw parseFailure(url, `an address off the site, ${finalUrl}`);
       }
 
-      if (status === 429 || status === 503) {
-        limiter.penalize();
+      const verdict = readAnswer(url, status, body, retryAfterMs, backoffDelay(attempt));
+      if (verdict.kind === "refused") {
+        throw verdict.error;
+      }
+      if (verdict.kind === "again") {
+        if (verdict.penalise) {
+          limiter.penalize();
+          logger.info(`${verdict.because} on ${url}, interval now ${limiter.currentIntervalMs}ms`);
+        }
         // A server that says when to come back knows better than our own guess.
-        askedWaitMs = retryAfterMs;
-        lastError = rateLimited(url, retryAfterMs ?? backoffDelay(attempt));
-        logger.info(`rate limited on ${url}, interval now ${limiter.currentIntervalMs}ms`);
-        continue;
-      }
-      // A 403 refuses rather than asking for patience: three more requests
-      // would be three more refusals, and the site is run by volunteers.
-      if (status === 403) {
-        throw new BideEtMusiqueError("rate_limited", `Bide & Musique refused to serve ${url}.`, {
-          url,
-          status,
-          hint: "The site declined this request rather than asking to slow down.",
-        });
-      }
-      if (status === 404) throw notFound(url, "that address");
-      if (status >= 500) {
-        lastError = upstreamError(url, status);
-        continue;
-      }
-      if (status >= 400) throw upstreamError(url, status);
-
-      const trimmed = body.trim();
-      if (trimmed.length < MIN_PLAUSIBLE_HTML && !CLOSES_ITS_ROOT.test(trimmed)) {
-        // A 200 carrying too few bytes to be a page is worth another attempt,
-        // since a site under load answers that way. What it is not is evidence
-        // of rate limiting: the exchange succeeded and the body was unreadable,
-        // so once the attempts run out that is what gets reported. Pacing still
-        // backs off, which costs nothing and helps if the site was struggling.
-        limiter.penalize();
-        lastError = parseFailure(url, "the answer was too short to be a page");
-        logger.info(`implausibly short body on ${url} (${trimmed.length} bytes)`);
+        askedWaitMs = verdict.waitMs;
+        lastError = verdict.error;
         continue;
       }
 
@@ -200,7 +307,9 @@ async function readBounded(response: Response, url: string): Promise<Uint8Array>
     throw parseFailure(url, `an answer of ${announced} bytes, past what this client reads`);
   }
 
-  if (!response.body) return new Uint8Array(await response.arrayBuffer());
+  if (!response.body) {
+    return new Uint8Array(await response.arrayBuffer());
+  }
 
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -209,7 +318,9 @@ async function readBounded(response: Response, url: string): Promise<Uint8Array>
   try {
     for (;;) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        break;
+      }
       read += value.byteLength;
       if (read > MAX_BODY_BYTES) {
         throw parseFailure(url, `an answer past the ${MAX_BODY_BYTES} bytes this client reads`);
@@ -239,16 +350,24 @@ export function givenUp(url: string): BideEtMusiqueError {
 
 /** `Retry-After` carries either seconds or an HTTP date. */
 function parseRetryAfter(raw: string | null): number | null {
-  if (!raw) return null;
+  if (!raw) {
+    return null;
+  }
   const seconds = Number(raw.trim());
-  if (Number.isFinite(seconds) && seconds >= 0) return Math.round(seconds * 1000);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.round(seconds * 1000);
+  }
   const when = Date.parse(raw);
-  if (Number.isNaN(when)) return null;
+  if (Number.isNaN(when)) {
+    return null;
+  }
   return Math.max(0, when - Date.now());
 }
 
 function asTransportError(error: unknown, url: string): BideEtMusiqueError {
-  if (error instanceof BideEtMusiqueError) return error;
+  if (error instanceof BideEtMusiqueError) {
+    return error;
+  }
   const name = error instanceof Error ? error.name : "";
   if (name === "TimeoutError" || name === "AbortError") {
     return new BideEtMusiqueError("timeout", "Bide & Musique did not answer in time.", {

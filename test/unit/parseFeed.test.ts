@@ -24,12 +24,12 @@ function feed(entries: Entry[]): string {
     .map(
       ({ id, line, published = "Sun, 16 Aug 2026 20:00:34 +0200" }) =>
         `<item><title>${line}</title>` +
-        `<description>&lt;table&gt;&lt;/table&gt;</description>` +
+        "<description>&lt;table&gt;&lt;/table&gt;</description>" +
         `<link>http://www.bide-et-musique.com/song/${id}.html</link>` +
-        `<category>Chanson</category>` +
+        "<category>Chanson</category>" +
         `<guid isPermaLink="false">http://www.bide-et-musique.com/song/${id}.html</guid>` +
         (published === null ? "" : `<pubDate>${published}</pubDate>`) +
-        `</item>`,
+        "</item>",
     )
     .join("");
 

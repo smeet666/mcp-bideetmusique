@@ -52,7 +52,7 @@ const ROW = new RegExp(
  * the first `>` would end the tag inside that attribute and read the remains of
  * it as the link text.
  */
-const TAG_REST = String.raw`(?:[^>"]|"[^"]*")*`;
+const TAG_REST = '(?:[^>"]|"[^"]*")*';
 
 const SONG_ANCHOR = new RegExp(
   String.raw`<a\s+href="/song/(\d+)\.html"${TAG_REST}>([\s\S]{0,${INLINE_MAX}}?)</a>`,
@@ -137,9 +137,13 @@ export function parseSearchPage(html: string, url: string): SearchPage {
 /** The count the site prints, which counts matching songs across every page. */
 function readTotal(block: string): number | null {
   const raw = HEADER_COUNT.exec(block)?.[1];
-  if (raw === undefined) return null;
+  if (raw === undefined) {
+    return null;
+  }
   const digits = raw.replace(/[^\d]/g, "");
-  if (digits === "") return null;
+  if (digits === "") {
+    return null;
+  }
   const value = Number.parseInt(digits, 10);
   return Number.isFinite(value) ? value : null;
 }
@@ -165,12 +169,16 @@ function readRows(block: string): { songs: SongSummary[]; unreadableRows: number
 function readRow(row: string): SongSummary | null {
   const songMatch = SONG_ANCHOR.exec(row);
   const artistMatch = ARTIST_ANCHOR.exec(row);
-  if (!songMatch || !artistMatch) return null;
+  if (!songMatch || !artistMatch) {
+    return null;
+  }
 
   const songId = songMatch[1];
   const artistId = artistMatch[1];
   const title = textOf(songMatch[2] ?? "");
-  if (!songId || !artistId || title === "") return null;
+  if (!songId || !artistId || title === "") {
+    return null;
+  }
 
   const thumbnail = THUMBNAIL.exec(row)?.[1];
   const sleeve = SLEEVE.exec(row)?.[1];
@@ -225,7 +233,9 @@ function readPagination(block: string): {
   hasMorePages: boolean | null;
 } {
   const bar = PAGEBAR.exec(block)?.[1];
-  if (!bar) return { pageServed: 1, pageCount: 1, hasMorePages: false };
+  if (!bar) {
+    return { pageServed: 1, pageCount: 1, hasMorePages: false };
+  }
 
   const activeRaw = ACTIVE_PAGE.exec(bar)?.[1];
   const pageServed = activeRaw ? Number.parseInt(activeRaw, 10) : null;
@@ -234,7 +244,9 @@ function readPagination(block: string): {
   PAGE_LINK.lastIndex = 0;
   for (let match = PAGE_LINK.exec(bar); match !== null; match = PAGE_LINK.exec(bar)) {
     const page = Number.parseInt(match[1] ?? "", 10);
-    if (Number.isFinite(page) && page > highest) highest = page;
+    if (Number.isFinite(page) && page > highest) {
+      highest = page;
+    }
   }
 
   const pageCount = highest > 0 ? highest : null;

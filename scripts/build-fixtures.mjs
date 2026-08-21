@@ -65,18 +65,22 @@ ${titleCell}
 
 /** The pagination bar, absent when the results fit on one page. */
 function pagebar({ active, pages, query, st }) {
-  if (pages <= 1) return "";
+  if (pages <= 1) {
+    return "";
+  }
   const link = (page, inner) =>
     `<td><a href="/recherche.html?st=${st}&amp;kw=${query}&amp;Page=${page}#resultat">${inner}</a></td>`;
 
   const cells = [];
-  if (active > 1)
+  if (active > 1) {
     cells.push(link(active - 1, `<img src="/images/bt-previous.png" alt="&lsaquo;" />`));
+  }
   for (let page = 1; page <= pages; page += 1) {
     cells.push(page === active ? `<td class="pageactive">${page}</td>` : link(page, String(page)));
   }
-  if (active < pages)
+  if (active < pages) {
     cells.push(link(active + 1, `<img src="/images/bt-next.png" alt="&rsaquo;" />`));
+  }
 
   return `<tr class="entete"><td colspan="4"><span class="pagebar"><table class="navbar"><tr>${cells.join("\n")}\n</tr></table></span></td></tr>`;
 }

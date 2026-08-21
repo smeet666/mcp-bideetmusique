@@ -99,7 +99,9 @@ async function settle<T>(running: Promise<T>): Promise<T> {
 }
 
 function payload(result: ToolResult): Record<string, unknown> {
-  if (!result.structuredContent) throw new Error("the tool returned no structuredContent");
+  if (!result.structuredContent) {
+    throw new Error("the tool returned no structuredContent");
+  }
   return result.structuredContent;
 }
 

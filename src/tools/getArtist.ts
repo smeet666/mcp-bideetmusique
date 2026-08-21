@@ -103,7 +103,9 @@ export async function runGetArtist(
     const { data, cached } = await client.getArtist(args.artist_id.trim(), signal);
 
     const notes: string[] = [];
-    if (cached) notes.push("Served from this server's short-lived in-memory cache.");
+    if (cached) {
+      notes.push("Served from this server's short-lived in-memory cache.");
+    }
 
     const statesNothing =
       data.aliases.length === 0 &&
@@ -173,8 +175,8 @@ export async function runGetArtist(
     const header = [
       data.name,
       data.aliases.length > 0 ? `Autres alias : ${data.aliases.join(", ")}` : null,
-      data.nationality !== null ? `Nationalité : ${data.nationality}` : null,
-      data.birthDate !== null ? `Date de naissance : ${data.birthDate}` : null,
+      data.nationality === null ? null : `Nationalité : ${data.nationality}`,
+      data.birthDate === null ? null : `Date de naissance : ${data.birthDate}`,
     ].filter((line): line is string => line !== null);
 
     const list = discography.map(

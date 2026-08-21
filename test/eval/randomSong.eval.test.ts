@@ -49,7 +49,9 @@ async function draw(client: BideEtMusiqueClient, wanted: number): Promise<Draw[]
       const { data } = await client.getSong(id);
       drawn.push({ id, song: data });
     } catch (error) {
-      if (error instanceof BideEtMusiqueError && error.code === "not_found") continue;
+      if (error instanceof BideEtMusiqueError && error.code === "not_found") {
+        continue;
+      }
       throw error;
     }
   }

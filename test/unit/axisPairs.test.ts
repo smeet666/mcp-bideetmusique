@@ -63,7 +63,9 @@ type Pair = [SearchType, SearchType];
 function unorderedPairs(axes: SearchType[]): Pair[] {
   const pairs: Pair[] = [];
   for (let i = 0; i < axes.length; i += 1) {
-    for (let j = i + 1; j < axes.length; j += 1) pairs.push([axes[i]!, axes[j]!]);
+    for (let j = i + 1; j < axes.length; j += 1) {
+      pairs.push([axes[i]!, axes[j]!]);
+    }
   }
   return pairs;
 }
@@ -154,8 +156,12 @@ const nothing = (): Answer => ({ kind: "html", html: NO_RESULTS_HTML });
 const serverError = (): Answer => ({ kind: "status", status: 500 });
 
 function urlOf(input: Parameters<typeof fetch>[0]): string {
-  if (typeof input === "string") return input;
-  if (input instanceof URL) return input.href;
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.href;
+  }
   return (input as Request).url;
 }
 
@@ -163,7 +169,9 @@ function urlOf(input: Parameters<typeof fetch>[0]): string {
 function axisOfUrl(url: string): SearchType {
   const st = new URL(url).searchParams.get("st");
   const axis = AXES.find((candidate) => String(AXIS_CODES[candidate]) === st);
-  if (!axis) throw new Error(`no axis carries st=${st}: ${url}`);
+  if (!axis) {
+    throw new Error(`no axis carries st=${st}: ${url}`);
+  }
   return axis;
 }
 
@@ -179,7 +187,9 @@ function servingPerAxis(answers: Partial<Record<SearchType, Answer>>): Stub {
     const url = urlOf(input);
     urls.push(url);
     const answer = answers[axisOfUrl(url)];
-    if (!answer) throw new Error(`the stub holds no page for this axis: ${url}`);
+    if (!answer) {
+      throw new Error(`the stub holds no page for this axis: ${url}`);
+    }
     if (answer.kind === "status") {
       return new Response("", {
         status: answer.status,

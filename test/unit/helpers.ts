@@ -94,7 +94,9 @@ export interface StructuredSearch {
 }
 
 export function structured(result: ToolResult): StructuredSearch {
-  if (!result.structuredContent) throw new Error("the tool returned no structuredContent");
+  if (!result.structuredContent) {
+    throw new Error("the tool returned no structuredContent");
+  }
   return result.structuredContent as unknown as StructuredSearch;
 }
 
@@ -112,7 +114,9 @@ export async function failureOf(run: Promise<ToolResult>): Promise<{ code: strin
   try {
     result = await run;
   } catch (error) {
-    if (error instanceof BideEtMusiqueError) return { code: error.code, text: error.message };
+    if (error instanceof BideEtMusiqueError) {
+      return { code: error.code, text: error.message };
+    }
     throw error;
   }
   if (!result.isError) {
@@ -128,7 +132,9 @@ export function codeOfThrown(run: () => unknown): string {
   try {
     run();
   } catch (error) {
-    if (error instanceof BideEtMusiqueError) return error.code;
+    if (error instanceof BideEtMusiqueError) {
+      return error.code;
+    }
     throw error;
   }
   throw new Error("expected a BideEtMusiqueError, nothing was thrown");

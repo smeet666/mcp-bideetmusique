@@ -83,7 +83,9 @@ interface StructuredSong {
 }
 
 function songPayload(result: ToolResult): StructuredSong {
-  if (!result.structuredContent) throw new Error("the tool returned no structuredContent");
+  if (!result.structuredContent) {
+    throw new Error("the tool returned no structuredContent");
+  }
   return result.structuredContent as unknown as StructuredSong;
 }
 
@@ -100,10 +102,17 @@ async function run(options: RecordOptions = {}): Promise<ToolResult> {
 
 /** Every string the payload holds, at any depth, for the two never-published rules. */
 function allStrings(value: unknown, found: string[] = []): string[] {
-  if (typeof value === "string") found.push(value);
-  else if (Array.isArray(value)) for (const entry of value) allStrings(entry, found);
-  else if (value && typeof value === "object")
-    for (const entry of Object.values(value)) allStrings(entry, found);
+  if (typeof value === "string") {
+    found.push(value);
+  } else if (Array.isArray(value)) {
+    for (const entry of value) {
+      allStrings(entry, found);
+    }
+  } else if (value && typeof value === "object") {
+    for (const entry of Object.values(value)) {
+      allStrings(entry, found);
+    }
+  }
   return found;
 }
 

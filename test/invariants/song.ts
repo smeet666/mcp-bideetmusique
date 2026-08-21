@@ -27,7 +27,7 @@ const RIGHTS_NOTICE = /en attente d'une autorisation/i;
 const STREAM_ENDPOINT = /stream_\d+\.php|\/stream_/i;
 
 /** The site, and nothing beyond it. */
-const SITE_URL = /^https:\/\/www\.bide-et-musique\.com\//;
+const SITE_URL = "https://www.bide-et-musique.com/";
 
 function excerpt(text: string, match: RegExpExecArray): string {
   const from = Math.max(0, match.index - 20);
@@ -47,7 +47,7 @@ export function violationsOf(song: Song): Violation[] {
   const lyrics = song.lyrics;
 
   if (lyrics.text !== null) {
-    const checks: Array<[string, RegExp]> = [
+    const checks: [string, RegExp][] = [
       ["the transcription carries no markup", MARKUP],
       ["the transcription carries no undecoded entity", UNDECODED_ENTITY],
       ["the transcription stops before the line naming who typed it", CREDIT_LINE],
@@ -60,7 +60,9 @@ export function violationsOf(song: Song): Violation[] {
     ];
     for (const [property, pattern] of checks) {
       const match = pattern.exec(lyrics.text);
-      if (match) note(property, excerpt(lyrics.text, match));
+      if (match) {
+        note(property, excerpt(lyrics.text, match));
+      }
     }
 
     if (lyrics.text.trim() === "") {
@@ -78,14 +80,20 @@ export function violationsOf(song: Song): Violation[] {
     note("a page carrying no transcription reports none", String(lyrics.text).slice(0, 40));
   }
 
-  if (!SITE_URL.test(lyrics.url)) note("the lyrics url points at the site", lyrics.url);
-  if (!SITE_URL.test(song.url)) note("the record url points at the site", song.url);
+  if (!lyrics.url.startsWith(SITE_URL)) {
+    note("the lyrics url points at the site", lyrics.url);
+  }
+  if (!song.url.startsWith(SITE_URL)) {
+    note("the record url points at the site", song.url);
+  }
 
   // The per-song audio endpoint sits on every record page and belongs to the
   // station's stream rather than to the catalogue.
   for (const value of stringsOf(song)) {
     const match = STREAM_ENDPOINT.exec(value);
-    if (match) note("no field carries the audio stream endpoint", excerpt(value, match));
+    if (match) {
+      note("no field carries the audio stream endpoint", excerpt(value, match));
+    }
   }
 
   return violations;
@@ -93,8 +101,12 @@ export function violationsOf(song: Song): Violation[] {
 
 /** Every string anywhere in the record, however deeply nested. */
 function stringsOf(value: unknown): string[] {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(stringsOf);
+  if (typeof value === "string") {
+    return [value];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap(stringsOf);
+  }
   if (value !== null && typeof value === "object") {
     return Object.values(value as Record<string, unknown>).flatMap(stringsOf);
   }

@@ -70,17 +70,23 @@ export async function runGetRandomSong(
     for (let attempt = 0; attempt < MAX_DRAWS; attempt += 1) {
       // A caller that stopped waiting is not owed another id, and the site is
       // not owed another request.
-      if (signal?.aborted) throw givenUp(songUrl(drawn[drawn.length - 1] ?? "0"));
+      if (signal?.aborted) {
+        throw givenUp(songUrl(drawn.at(-1) ?? "0"));
+      }
       const id = String(Math.floor(random() * highest) + 1);
       // Asking twice for an id already known to be unserved spends a request on
       // an answer this call already has.
-      if (drawn.includes(id)) continue;
+      if (drawn.includes(id)) {
+        continue;
+      }
       drawn.push(id);
 
       try {
         return answer(await client.getSong(id, signal), drawn, newest.data, includeLyrics);
       } catch (error) {
-        if (error instanceof BideEtMusiqueError && error.code === "not_found") continue;
+        if (error instanceof BideEtMusiqueError && error.code === "not_found") {
+          continue;
+        }
         throw error;
       }
     }
@@ -104,7 +110,9 @@ function answer(
   const { data, cached } = outcome;
 
   const notes: string[] = [];
-  if (cached) notes.push("Served from this server's short-lived in-memory cache.");
+  if (cached) {
+    notes.push("Served from this server's short-lived in-memory cache.");
+  }
 
   notes.push(
     `Drawn from the ids 1 to ${highest}, the newest the collection's feed of new entries names. ` +
@@ -166,7 +174,7 @@ function answer(
 
   const lines = [
     `${data.artist.name} · ${data.title}`,
-    data.year !== null ? `Année : ${data.year}` : null,
+    data.year === null ? null : `Année : ${data.year}`,
     data.writers.length > 0 ? `Auteurs compositeurs : ${data.writers.join(", ")}` : null,
     `Durée : ${data.duration.text}`,
     data.labels.length > 0 ? `Label : ${data.labels.join(", ")}` : null,
@@ -175,9 +183,9 @@ function answer(
   ].filter((line): line is string => line !== null);
 
   const body =
-    lyricsText !== null
-      ? `${lines.join("\n")}\n\n${quotedBlock("Paroles publiées par Bide & Musique :", lyricsText)}`
-      : lines.join("\n");
+    lyricsText === null
+      ? lines.join("\n")
+      : `${lines.join("\n")}\n\n${quotedBlock("Paroles publiées par Bide & Musique :", lyricsText)}`;
 
   noteIfTextIsCut(body, notes);
 

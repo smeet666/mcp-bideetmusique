@@ -107,7 +107,9 @@ describe("a search through the server", () => {
     const call = client.callTool({ name: "search_albums", arguments: {} }).catch((error) => error);
     const outcome = await call;
 
-    if (outcome instanceof Error) return;
+    if (outcome instanceof Error) {
+      return;
+    }
     expect(outcome.isError).toBe(true);
   });
 });

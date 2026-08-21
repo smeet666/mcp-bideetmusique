@@ -134,6 +134,110 @@ ${notice}
  * wording it quotes. A test that fails only on one of them is a disagreement
  * about where the value sits on the page, and the page is what settles it.
  */
+/** The labelled rows of the record's table, in the order the site prints them. */
+function fieldRows(options: {
+  performer: string | null;
+  writers: string[];
+  year: string | null;
+  duration: string | null;
+  labels: string[];
+  reference: string | null;
+  presentation: string | null;
+  sleeveCredits: string[];
+}): string[] {
+  const { performer, writers, year, duration, labels, reference, presentation, sleeveCredits } =
+    options;
+  const rows: string[] = [];
+  if (performer) {
+    rows.push(field("Interprète", anchor("/artist/9001.html", performer)));
+  }
+  if (writers.length > 0) {
+    rows.push(
+      field(
+        "Auteurs compositeurs",
+        writers.map((name, index) => anchor(`/auteur/${400 + index}.html`, name)).join(" - "),
+      ),
+    );
+  }
+  if (year) {
+    rows.push(field("Année", anchor(`/annee/${year}.html`, year)));
+  }
+  if (duration) {
+    rows.push(field("Durée", duration));
+  }
+  if (labels.length > 0) {
+    rows.push(
+      field(
+        "Label",
+        labels.map((name, index) => anchor(`/label/${700 + index}.html`, name)).join(" - "),
+      ),
+    );
+  }
+  if (reference) {
+    rows.push(field("Référence", reference));
+  }
+  if (presentation) {
+    rows.push(field("Présentation", presentation));
+  }
+  if (sleeveCredits.length > 0) {
+    rows.push(
+      field(
+        "Pochette",
+        sleeveCredits
+          .map((name, index) => anchor(`/pochette/${900 + index}.html`, name))
+          .join(" - "),
+      ),
+    );
+  }
+
+  return rows;
+}
+
+/** The lines the site prints beside the record: when it arrived, and who keeps it. */
+function sidebarLines(options: {
+  id: string;
+  addedOn: string | null;
+  seeAlso: Array<{ id: string; name: string }>;
+  top50: string | null;
+  favourites: number | null;
+  comments: Comments | null;
+}): string[] {
+  const { id, addedOn, seeAlso, top50, favourites, comments } = options;
+  const infos: string[] = [];
+  if (addedOn) {
+    infos.push(`<p>Ajouté le ${addedOn}</p>`);
+  }
+  if (seeAlso.length > 0) {
+    infos.push(
+      `<p>Voir aussi : ${seeAlso
+        .map((entry) => anchor(`/artist/${entry.id}.html`, entry.name))
+        .join(", ")}</p>`,
+    );
+  }
+  if (top50) {
+    infos.push(`<p>Au TOP 50 de B&amp;M : ${top50}</p>`);
+  }
+  if (favourites !== null && favourites !== undefined) {
+    infos.push(
+      `<p class="favoris">Cette chanson est dans les favoris de ${anchor(
+        `/song/${id}/fans.html`,
+        String(favourites),
+      )} personnes</p>`,
+    );
+  }
+  if (comments) {
+    const archived =
+      comments.archived === null || comments.archived === undefined
+        ? ""
+        : `, dont ${comments.archived} archivé${comments.archived > 1 ? "s" : ""}`;
+    infos.push(
+      `<p class="commentaires">${anchor(`/song/${id}/commentaires.html`, `${comments.count} commentaire${comments.count > 1 ? "s" : ""}`)}${archived}</p>`,
+    );
+  }
+
+  return infos;
+}
+
 export function recordPage(options: RecordOptions = {}): string {
   const {
     id = SONG_ID,
@@ -166,66 +270,18 @@ export function recordPage(options: RecordOptions = {}): string {
       : (options.heading ??
         `<p class="titrerosebg"><a href="/artist/${artistId}.html" title="Consulter la fiche de <b>${artist}</b>">${artist}</a> - ${title}</p>`);
 
-  const rows: string[] = [];
-  if (performer) rows.push(field("Interprète", anchor("/artist/9001.html", performer)));
-  if (writers.length > 0) {
-    rows.push(
-      field(
-        "Auteurs compositeurs",
-        writers.map((name, index) => anchor(`/auteur/${400 + index}.html`, name)).join(" - "),
-      ),
-    );
-  }
-  if (year) rows.push(field("Année", anchor(`/annee/${year}.html`, year)));
-  if (duration) rows.push(field("Durée", duration));
-  if (labels.length > 0) {
-    rows.push(
-      field(
-        "Label",
-        labels.map((name, index) => anchor(`/label/${700 + index}.html`, name)).join(" - "),
-      ),
-    );
-  }
-  if (reference) rows.push(field("Référence", reference));
-  if (presentation) rows.push(field("Présentation", presentation));
-  if (sleeveCredits.length > 0) {
-    rows.push(
-      field(
-        "Pochette",
-        sleeveCredits
-          .map((name, index) => anchor(`/pochette/${900 + index}.html`, name))
-          .join(" - "),
-      ),
-    );
-  }
+  const rows = fieldRows({
+    performer,
+    writers,
+    year,
+    duration,
+    labels,
+    reference,
+    presentation,
+    sleeveCredits,
+  });
 
-  const infos: string[] = [];
-  if (addedOn) infos.push(`<p>Ajouté le ${addedOn}</p>`);
-  if (seeAlso.length > 0) {
-    infos.push(
-      `<p>Voir aussi : ${seeAlso
-        .map((entry) => anchor(`/artist/${entry.id}.html`, entry.name))
-        .join(", ")}</p>`,
-    );
-  }
-  if (top50) infos.push(`<p>Au TOP 50 de B&amp;M : ${top50}</p>`);
-  if (favourites !== null && favourites !== undefined) {
-    infos.push(
-      `<p class="favoris">Cette chanson est dans les favoris de ${anchor(
-        `/song/${id}/fans.html`,
-        String(favourites),
-      )} personnes</p>`,
-    );
-  }
-  if (comments) {
-    const archived =
-      comments.archived === null || comments.archived === undefined
-        ? ""
-        : `, dont ${comments.archived} archivé${comments.archived > 1 ? "s" : ""}`;
-    infos.push(
-      `<p class="commentaires">${anchor(`/song/${id}/commentaires.html`, `${comments.count} commentaire${comments.count > 1 ? "s" : ""}`)}${archived}</p>`,
-    );
-  }
+  const infos = sidebarLines({ id, addedOn, seeAlso, top50, favourites, comments });
 
   const pochette = sleeve
     ? `<div class="pochette-fiche"><a href="/show-image.html?I=/images/pochettes/${id}.jpg&amp;T=pochette"><img src="/images/thumb200/${id}.jpg" alt="Pochette" /></a></div>`

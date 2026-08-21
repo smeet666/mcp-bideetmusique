@@ -78,20 +78,26 @@ export function parseArtistPage(html: string, url: string, id: string): Artist {
   HEADER_ROW.lastIndex = 0;
   for (let match = HEADER_ROW.exec(html); match !== null; match = HEADER_ROW.exec(html)) {
     const label = foldLabel(match[1] ?? match[2] ?? "");
-    if (label !== "" && !header.has(label)) header.set(label, match[3] ?? "");
+    if (label !== "" && !header.has(label)) {
+      header.set(label, match[3] ?? "");
+    }
   }
 
   /** The cell of the first label the test accepts, since wording varies. */
   const cellFor = (matches: (label: string) => boolean): string | undefined => {
     for (const [label, cell] of header) {
-      if (matches(label)) return cell;
+      if (matches(label)) {
+        return cell;
+      }
     }
     return undefined;
   };
 
   const textFor = (matches: (label: string) => boolean): string | null => {
     const cell = cellFor(matches);
-    if (cell === undefined) return null;
+    if (cell === undefined) {
+      return null;
+    }
     const value = textOf(cell);
     return value === "" ? null : value;
   };
@@ -128,13 +134,17 @@ function splitLines(cell: string): string[] {
 }
 
 function readArtistLinks(cell: string | undefined): ArtistLink[] {
-  if (cell === undefined) return [];
+  if (cell === undefined) {
+    return [];
+  }
   const links: ArtistLink[] = [];
   ANCHOR.lastIndex = 0;
   for (let match = ANCHOR.exec(cell); match !== null; match = ANCHOR.exec(cell)) {
     const id = ARTIST_HREF.exec(match[1] ?? "")?.[1];
     const name = textOf(match[2] ?? "");
-    if (!id || name === "") continue;
+    if (!id || name === "") {
+      continue;
+    }
     links.push({ id, name, url: artistUrl(id) });
   }
   return links;
@@ -142,19 +152,25 @@ function readArtistLinks(cell: string | undefined): ArtistLink[] {
 
 /** Addresses off the site, kept with the label the page gave them. */
 function readExternalLinks(cell: string | undefined): ExternalLink[] {
-  if (cell === undefined) return [];
+  if (cell === undefined) {
+    return [];
+  }
   const links: ExternalLink[] = [];
   ANCHOR.lastIndex = 0;
   for (let match = ANCHOR.exec(cell); match !== null; match = ANCHOR.exec(cell)) {
     const href = match[1] ?? "";
     const label = textOf(match[2] ?? "");
-    if (href === "" || label === "") continue;
+    if (href === "" || label === "") {
+      continue;
+    }
 
     // A page publishes addresses people typed, and one of them can be no
     // address. Dropping it is honest; keeping the label beside nothing would
     // offer a link that leads nowhere.
     const url = toAbsoluteUrl(href);
-    if (url === null) continue;
+    if (url === null) {
+      continue;
+    }
 
     links.push({ label, url });
   }
@@ -168,11 +184,15 @@ function readDiscography(html: string): DiscographyEntry[] {
   for (let match = DISCOGRAPHY_ROW.exec(html); match !== null; match = DISCOGRAPHY_ROW.exec(html)) {
     const row = match[1] ?? "";
     const song = SONG_ANCHOR.exec(row);
-    if (!song) continue;
+    if (!song) {
+      continue;
+    }
 
     const songId = song[1];
     const title = textOf(song[2] ?? "");
-    if (!songId || title === "") continue;
+    if (!songId || title === "") {
+      continue;
+    }
 
     entries.push({
       songId,
@@ -192,7 +212,9 @@ function readYear(row: string): number | null {
   CELL.lastIndex = 0;
   for (let match = CELL.exec(row); match !== null; match = CELL.exec(row)) {
     const value = textOf(match[1] ?? "");
-    if (YEAR_CELL.test(value)) return Number.parseInt(value, 10);
+    if (YEAR_CELL.test(value)) {
+      return Number.parseInt(value, 10);
+    }
   }
   return null;
 }
@@ -205,7 +227,9 @@ function readProgramming(row: string): string | null {
   IMAGE_ALT.lastIndex = 0;
   for (let match = IMAGE_ALT.exec(row); match !== null; match = IMAGE_ALT.exec(row)) {
     const alt = textOf(match[1] ?? "");
-    if (alt === "" || /^Vignette\b/i.test(alt)) continue;
+    if (alt === "" || /^Vignette\b/i.test(alt)) {
+      continue;
+    }
     return alt;
   }
   return null;
