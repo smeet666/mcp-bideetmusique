@@ -14,7 +14,9 @@ describe("the floor on the interval between two requests", () => {
 
   it("keeps the default interval when the environment asks for one below the floor", () => {
     expect(loadConfig({ BIDE_MIN_INTERVAL_MS: "500" }).minIntervalMs).toBe(DEFAULTS.minIntervalMs);
-    expect(loadConfig({ BIDE_MIN_INTERVAL_MS: "-1000" }).minIntervalMs).toBe(DEFAULTS.minIntervalMs);
+    expect(loadConfig({ BIDE_MIN_INTERVAL_MS: "-1000" }).minIntervalMs).toBe(
+      DEFAULTS.minIntervalMs,
+    );
   });
 
   it("never returns an interval under the floor, whatever the environment says", () => {
@@ -64,7 +66,11 @@ describe("the rest of the configuration", () => {
   });
 
   it("falls back to the default when a value cannot be read as a number", () => {
-    const config = loadConfig({ BIDE_TIMEOUT_MS: "soon", BIDE_MAX_RETRIES: "", BIDE_CACHE_TTL_MS: "1e" });
+    const config = loadConfig({
+      BIDE_TIMEOUT_MS: "soon",
+      BIDE_MAX_RETRIES: "",
+      BIDE_CACHE_TTL_MS: "1e",
+    });
 
     expect(config.timeoutMs).toBe(DEFAULTS.timeoutMs);
     expect(config.maxRetries).toBe(DEFAULTS.maxRetries);

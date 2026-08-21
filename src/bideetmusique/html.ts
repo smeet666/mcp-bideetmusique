@@ -131,5 +131,7 @@ const ASCII_SPACE = /[ \t\n\r\f\v]+/g;
  */
 export function textOf(html: string): string {
   const stripped = html.replace(/<[^>]*>/g, " ");
-  return decodeEntities(stripped).replace(ASCII_SPACE, " ").replace(/^ +| +$/g, "");
+  return decodeEntities(stripped)
+    .replace(ASCII_SPACE, " ")
+    .replace(/^ +| +$/g, "");
 }

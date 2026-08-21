@@ -16,7 +16,7 @@ import {
 } from "../errors.js";
 import { decodeHtml } from "./html.js";
 import { isBideHost } from "./urls.js";
-import { RateLimiter, sleep } from "./rateLimiter.js";
+import { type RateLimiter, sleep } from "./rateLimiter.js";
 
 const BACKOFF_BASE_MS = 3000;
 const BACKOFF_FACTOR = 2;

@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  parseDuration,
-  type DurationPrecision,
-} from "../../src/bideetmusique/duration.js";
+import { parseDuration, type DurationPrecision } from "../../src/bideetmusique/duration.js";
 
 const NBSP = " ";
 
@@ -148,11 +145,7 @@ describe("parseDuration", () => {
     });
 
     it("reads a non-breaking space between a number and its unit as an ordinary space", () => {
-      const cases = [
-        `4${NBSP}m 16${NBSP}s`,
-        `4 m${NBSP}16 s`,
-        `4${NBSP}m${NBSP}16${NBSP}s`,
-      ];
+      const cases = [`4${NBSP}m 16${NBSP}s`, `4 m${NBSP}16 s`, `4${NBSP}m${NBSP}16${NBSP}s`];
       for (const raw of cases) {
         expect(parseDuration(raw).seconds).toBe(256);
         expect(parseDuration(raw).precision).toBe("second");

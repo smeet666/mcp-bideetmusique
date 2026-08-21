@@ -226,14 +226,18 @@ describe("rule 2 — the enum is what the tool declares", () => {
 
   it("refuses a near-miss spelling of the new axes, before making any request", async () => {
     for (const axis of ["annee", "année", "labels", "Year"]) {
-      const { text } = await refusal(callSearch(throwingFetch, { query: "1983", search_type: axis }));
+      const { text } = await refusal(
+        callSearch(throwingFetch, { query: "1983", search_type: axis }),
+      );
       expect(text, axis).toMatch(/search_type|invalid/i);
     }
   });
 
   it("refuses the site's own numeric codes for the new axes as a search_type", async () => {
     for (const code of ["5", "7"]) {
-      const { text } = await refusal(callSearch(throwingFetch, { query: "1983", search_type: code }));
+      const { text } = await refusal(
+        callSearch(throwingFetch, { query: "1983", search_type: code }),
+      );
       expect(text, code).toMatch(/search_type|invalid/i);
     }
   });
@@ -288,7 +292,9 @@ describe("rule 4 — the refusal says what to do instead", () => {
   });
 
   it("says the ranges the site documents return nothing", async () => {
-    const { text } = await refusal(callSearch(throwingFetch, { query: ">1980", search_type: "year" }));
+    const { text } = await refusal(
+      callSearch(throwingFetch, { query: ">1980", search_type: "year" }),
+    );
     expect(text).toMatch(/range/i);
     expect(text).toMatch(/nothing|no result|zero|0 /i);
   });

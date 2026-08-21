@@ -72,7 +72,9 @@ describe("rule 3 — an absence the site stated is reported as an absence, with 
     expect(payload.result_count).toBe(0);
     expect(payload.rows_on_page).toBe(0);
     expect(payload.total_matches).toBe(0);
-    expect(payload.notes.some((note) => /aucun|pas de r|nothing|no (result|match|song)/i.test(note))).toBe(true);
+    expect(
+      payload.notes.some((note) => /aucun|pas de r|nothing|no (result|match|song)/i.test(note)),
+    ).toBe(true);
   });
 });
 
@@ -152,9 +154,11 @@ describe("rule 7 — an unreadable row is named in the notes", () => {
     const payload = structured(result);
 
     expect(payload.results.map((song) => song.song_id)).toEqual(["5001", "5003"]);
-    expect(payload.notes.some((note) => /\b1\b/.test(note) && /row|line|ligne|illisib|unread/i.test(note))).toBe(
-      true,
-    );
+    expect(
+      payload.notes.some(
+        (note) => /\b1\b/.test(note) && /row|line|ligne|illisib|unread/i.test(note),
+      ),
+    ).toBe(true);
   });
 
   it("counts only the rows it returns, and explains any row it did not", async () => {
@@ -239,7 +243,9 @@ describe("rule 14 — every address in the payload is absolute and on the site",
     for (const song of structured(result).results) {
       expect(song.url.startsWith("https://www.bide-et-musique.com/")).toBe(true);
       expect(song.artist.url.startsWith("https://www.bide-et-musique.com/")).toBe(true);
-      expect(song.image_url === null || song.image_url.startsWith("https://www.bide-et-musique.com/")).toBe(true);
+      expect(
+        song.image_url === null || song.image_url.startsWith("https://www.bide-et-musique.com/"),
+      ).toBe(true);
     }
   });
 
@@ -259,7 +265,10 @@ describe("rule 14 — every address in the payload is absolute and on the site",
 describe("rule 1 — a failure is never an empty result", () => {
   it("fails with parse_failure when the table announces matches and holds no row", async () => {
     const failure = await failureOf(
-      runSearchSongs(clientServingFixture("search-table-no-rows.html"), { ...BASE_ARGS, query: "vide" }),
+      runSearchSongs(clientServingFixture("search-table-no-rows.html"), {
+        ...BASE_ARGS,
+        query: "vide",
+      }),
     );
 
     expect(failure.code).toBe("parse_failure");
@@ -274,7 +283,9 @@ describe("rule 1 — a failure is never an empty result", () => {
   });
 
   it("refuses a query that trims to nothing, without asking the site", async () => {
-    const failure = await failureOf(runSearchSongs(refusingClient(), { ...BASE_ARGS, query: "   " }));
+    const failure = await failureOf(
+      runSearchSongs(refusingClient(), { ...BASE_ARGS, query: "   " }),
+    );
 
     expect(failure.code).toBe("invalid_input");
   });

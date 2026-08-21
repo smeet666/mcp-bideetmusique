@@ -70,11 +70,13 @@ function pagebar({ active, pages, query, st }) {
     `<td><a href="/recherche.html?st=${st}&amp;kw=${query}&amp;Page=${page}#resultat">${inner}</a></td>`;
 
   const cells = [];
-  if (active > 1) cells.push(link(active - 1, `<img src="/images/bt-previous.png" alt="&lsaquo;" />`));
+  if (active > 1)
+    cells.push(link(active - 1, `<img src="/images/bt-previous.png" alt="&lsaquo;" />`));
   for (let page = 1; page <= pages; page += 1) {
     cells.push(page === active ? `<td class="pageactive">${page}</td>` : link(page, String(page)));
   }
-  if (active < pages) cells.push(link(active + 1, `<img src="/images/bt-next.png" alt="&rsaquo;" />`));
+  if (active < pages)
+    cells.push(link(active + 1, `<img src="/images/bt-next.png" alt="&rsaquo;" />`));
 
   return `<tr class="entete"><td colspan="4"><span class="pagebar"><table class="navbar"><tr>${cells.join("\n")}\n</tr></table></span></td></tr>`;
 }
@@ -118,14 +120,44 @@ ${rows.join("\n")}
 }
 
 const SONGS = [
-  { songId: "1001", title: "La valse du photocopieur", artistId: "501", artist: "Les Bureaux Tristes", programming: "Dans la programmation générale" },
-  { songId: "1002", title: "Mon tracteur me quitte", artistId: "502", artist: "Roger Placeholder", programming: "Dans les programmes spéciaux" },
-  { songId: "1003", title: "Fondue partie", artistId: "503", artist: "Duo Fictif", programming: "Hors classement" },
+  {
+    songId: "1001",
+    title: "La valse du photocopieur",
+    artistId: "501",
+    artist: "Les Bureaux Tristes",
+    programming: "Dans la programmation générale",
+  },
+  {
+    songId: "1002",
+    title: "Mon tracteur me quitte",
+    artistId: "502",
+    artist: "Roger Placeholder",
+    programming: "Dans les programmes spéciaux",
+  },
+  {
+    songId: "1003",
+    title: "Fondue partie",
+    artistId: "503",
+    artist: "Duo Fictif",
+    programming: "Hors classement",
+  },
 ];
 
 const LAST_PAGE_SONGS = [
-  { songId: "1004", title: "Le twist du plombier", artistId: "504", artist: "Les Siphons", programming: "Dans la programmation générale" },
-  { songId: "1005", title: "Complainte du parking", artistId: "505", artist: "Nadine Inventée", programming: "Dans les programmes spéciaux" },
+  {
+    songId: "1004",
+    title: "Le twist du plombier",
+    artistId: "504",
+    artist: "Les Siphons",
+    programming: "Dans la programmation générale",
+  },
+  {
+    songId: "1005",
+    title: "Complainte du parking",
+    artistId: "505",
+    artist: "Nadine Inventée",
+    programming: "Dans les programmes spéciaux",
+  },
 ];
 
 const fixtures = {
@@ -217,9 +249,28 @@ const fixtures = {
     total: 3,
     query: "cassé",
     rows: [
-      row({ index: 0, songId: "5001", title: "Premier morceau", artistId: "901", artist: "Groupe Un" }),
-      row({ index: 1, songId: "5002", title: "Morceau illisible", artistId: "902", artist: "Groupe Deux", songLink: false }),
-      row({ index: 2, songId: "5003", title: "Troisième morceau", artistId: "903", artist: "Groupe Trois" }),
+      row({
+        index: 0,
+        songId: "5001",
+        title: "Premier morceau",
+        artistId: "901",
+        artist: "Groupe Un",
+      }),
+      row({
+        index: 1,
+        songId: "5002",
+        title: "Morceau illisible",
+        artistId: "902",
+        artist: "Groupe Deux",
+        songLink: false,
+      }),
+      row({
+        index: 2,
+        songId: "5003",
+        title: "Troisième morceau",
+        artistId: "903",
+        artist: "Groupe Trois",
+      }),
     ],
   }),
 

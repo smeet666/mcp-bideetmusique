@@ -31,7 +31,14 @@ describe("rule 2 — total_matches is the site's number", () => {
   it("leaves the total null when the site printed no header, never zero", () => {
     const html = resultsPage({
       header: null,
-      rows: [resultRow({ songId: "6001", title: "Sans entête", artistId: "999", artist: "Groupe Sans Entête" })],
+      rows: [
+        resultRow({
+          songId: "6001",
+          title: "Sans entête",
+          artistId: "999",
+          artist: "Groupe Sans Entête",
+        }),
+      ],
     });
 
     const page = parseSearchPage(html, SEARCH_URL);
@@ -56,9 +63,9 @@ describe("rule 3 — an absence stated by the site is an absence", () => {
 
 describe("rule 4 — a refusal is not an absence", () => {
   it("throws invalid_input for the page asking to search for something", () => {
-    expect(codeOfThrown(() => parseSearchPage(fixtureHtml("search-no-query.html"), SEARCH_URL))).toBe(
-      "invalid_input",
-    );
+    expect(
+      codeOfThrown(() => parseSearchPage(fixtureHtml("search-no-query.html"), SEARCH_URL)),
+    ).toBe("invalid_input");
   });
 
   it("raises the refusal as a BideEtMusiqueError and invents no address for it", () => {
@@ -137,17 +144,17 @@ describe("rule 7 — a row that cannot be read is counted, never dropped in sile
 
 describe("rule 8 — a table announcing matches and holding no row is a parse failure", () => {
   it("refuses to call a table of seven matches with no row an empty result", () => {
-    expect(codeOfThrown(() => parseSearchPage(fixtureHtml("search-table-no-rows.html"), SEARCH_URL))).toBe(
-      "parse_failure",
-    );
+    expect(
+      codeOfThrown(() => parseSearchPage(fixtureHtml("search-table-no-rows.html"), SEARCH_URL)),
+    ).toBe("parse_failure");
   });
 });
 
 describe("rule 9 — a page with no results block at all is a parse failure", () => {
   it("refuses a page that carries no results block", () => {
-    expect(codeOfThrown(() => parseSearchPage(fixtureHtml("search-no-block.html"), SEARCH_URL))).toBe(
-      "parse_failure",
-    );
+    expect(
+      codeOfThrown(() => parseSearchPage(fixtureHtml("search-no-block.html"), SEARCH_URL)),
+    ).toBe("parse_failure");
   });
 
   it("refuses an empty body rather than reporting an absence of songs", () => {

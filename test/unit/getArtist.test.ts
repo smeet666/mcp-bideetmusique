@@ -18,7 +18,13 @@ import { parseArtistPage } from "../../src/bideetmusique/parseArtist.js";
 import { loadConfig } from "../../src/config.js";
 import { runGetArtist } from "../../src/tools/getArtist.js";
 import type { Artist } from "../../src/types.js";
-import { clientServingHtml, codeOfThrown, failureOf, refusingClient, textOfResult } from "./helpers.js";
+import {
+  clientServingHtml,
+  codeOfThrown,
+  failureOf,
+  refusingClient,
+  textOfResult,
+} from "./helpers.js";
 import type { ToolResult } from "../../src/tools/shared.js";
 
 const ARTIST_ID = "4821";
@@ -166,8 +172,7 @@ function artistPage(options: ArtistPageOptions = {}): string {
     );
   }
 
-  const header =
-    rows.length > 0 ? `<table class="bmtable">\n${rows.join("\n")}\n</table>` : "";
+  const header = rows.length > 0 ? `<table class="bmtable">\n${rows.join("\n")}\n</table>` : "";
 
   const portrait = photo
     ? `<div class="photo-artiste"><img src="/images/photos/${id}.jpg" alt="Photo de ${name}" /></div>`
@@ -216,9 +221,7 @@ function emptyBodyPage(): string {
 }
 
 /** One song and nothing else: the median page of the catalogue. */
-const ONE_SONG: SongRow[] = [
-  { songId: "5100", title: "La Valse du Répondeur", year: "1979" },
-];
+const ONE_SONG: SongRow[] = [{ songId: "5100", title: "La Valse du Répondeur", year: "1979" }];
 
 /**
  * The largest discography measured, served in the site's order, by year of
@@ -724,10 +727,30 @@ describe("rule 8 — a discography row keeps what it carries and nothing more", 
   it("returns each of the four programming markers as the site words it", () => {
     const artist = parse({
       songs: [
-        { songId: "5100", title: "La Valse du Répondeur", year: "1979", programming: PROGRAMMING.special },
-        { songId: "5101", title: "Le Manège de Saint-Girons", year: "1978", programming: PROGRAMMING.general },
-        { songId: "5102", title: "Deux Sucres et un Regret", year: "1977", programming: PROGRAMMING.unranked },
-        { songId: "5103", title: "Le Grand Départ de Juillet", year: "1976", programming: PROGRAMMING.broadcast },
+        {
+          songId: "5100",
+          title: "La Valse du Répondeur",
+          year: "1979",
+          programming: PROGRAMMING.special,
+        },
+        {
+          songId: "5101",
+          title: "Le Manège de Saint-Girons",
+          year: "1978",
+          programming: PROGRAMMING.general,
+        },
+        {
+          songId: "5102",
+          title: "Deux Sucres et un Regret",
+          year: "1977",
+          programming: PROGRAMMING.unranked,
+        },
+        {
+          songId: "5103",
+          title: "Le Grand Départ de Juillet",
+          year: "1976",
+          programming: PROGRAMMING.broadcast,
+        },
       ],
     });
 
@@ -778,10 +801,30 @@ describe("rule 8 — a discography row keeps what it carries and nothing more", 
     const payload = artistPayload(
       await run({
         songs: [
-          { songId: "5100", title: "La Valse du Répondeur", year: "1979", programming: PROGRAMMING.special },
-          { songId: "5101", title: "Le Manège de Saint-Girons", year: "1978", programming: PROGRAMMING.general },
-          { songId: "5102", title: "Deux Sucres et un Regret", year: "1977", programming: PROGRAMMING.unranked },
-          { songId: "5103", title: "Le Grand Départ de Juillet", year: "1976", programming: PROGRAMMING.broadcast },
+          {
+            songId: "5100",
+            title: "La Valse du Répondeur",
+            year: "1979",
+            programming: PROGRAMMING.special,
+          },
+          {
+            songId: "5101",
+            title: "Le Manège de Saint-Girons",
+            year: "1978",
+            programming: PROGRAMMING.general,
+          },
+          {
+            songId: "5102",
+            title: "Deux Sucres et un Regret",
+            year: "1977",
+            programming: PROGRAMMING.unranked,
+          },
+          {
+            songId: "5103",
+            title: "Le Grand Départ de Juillet",
+            year: "1976",
+            programming: PROGRAMMING.broadcast,
+          },
         ],
       }),
     );
@@ -803,7 +846,9 @@ describe("rule 9 — the discography order is the site's, and a truncation says 
     expect(artist.discography.map((entry) => entry.title)).toEqual(songs.map((row) => row.title));
     // The page's order is by year of release, so an alphabetical answer would
     // be a ranking the site never published.
-    const alphabetical = [...songs.map((row) => row.title)].sort((a, b) => a.localeCompare(b, "fr"));
+    const alphabetical = [...songs.map((row) => row.title)].sort((a, b) =>
+      a.localeCompare(b, "fr"),
+    );
     expect(artist.discography.map((entry) => entry.title)).not.toEqual(alphabetical);
   });
 
@@ -834,11 +879,15 @@ describe("rule 9 — the discography order is the site's, and a truncation says 
     expect(payload.notes.some((note) => note.includes("23"))).toBe(true);
     expect(
       payload.notes.some((note) =>
-        /ordre du site|order of the site|site's order|ann[ée]e de sortie|year of release/i.test(note),
+        /ordre du site|order of the site|site's order|ann[ée]e de sortie|year of release/i.test(
+          note,
+        ),
       ),
     ).toBe(true);
     expect(
-      payload.notes.some((note) => /classement|ranking|pas un palmar[èe]s|not a ranking/i.test(note)),
+      payload.notes.some((note) =>
+        /classement|ranking|pas un palmar[èe]s|not a ranking/i.test(note),
+      ),
     ).toBe(true);
     expect(textOfResult(result)).toContain("23");
   });
@@ -879,9 +928,9 @@ describe("rule 10 — an empty discography is stated, never left unexplained", (
   it("states no such absence for an artist holding one song", async () => {
     const payload = artistPayload(await run({ songs: ONE_SONG }));
 
-    expect(
-      payload.notes.some((note) => /aucune chanson|no song|aucun titre/i.test(note)),
-    ).toBe(false);
+    expect(payload.notes.some((note) => /aucune chanson|no song|aucun titre/i.test(note))).toBe(
+      false,
+    );
   });
 });
 
@@ -896,7 +945,9 @@ describe("rule 11 — a page with no header field says so in a note", () => {
     expect(payload.birth_date).toBeNull();
     expect(
       payload.notes.some((note) =>
-        /aucune information|aucun champ|no header field|states nothing|nothing about the artist|beyond the name/i.test(note),
+        /aucune information|aucun champ|no header field|states nothing|nothing about the artist|beyond the name/i.test(
+          note,
+        ),
       ),
     ).toBe(true);
   });
@@ -904,7 +955,9 @@ describe("rule 11 — a page with no header field says so in a note", () => {
   it("repeats it in the text, so a caller reading nulls does not take them for a failed read", async () => {
     const text = textOfResult(await run({ songs: ONE_SONG }));
 
-    expect(text).toMatch(/aucune information|aucun champ|no header field|states nothing|nothing about the artist|beyond the name/i);
+    expect(text).toMatch(
+      /aucune information|aucun champ|no header field|states nothing|nothing about the artist|beyond the name/i,
+    );
   });
 
   it("states no such note when the page carries a header field", async () => {
@@ -912,7 +965,11 @@ describe("rule 11 — a page with no header field says so in a note", () => {
 
     expect(payload.nationality).toBe("suisse");
     expect(
-      payload.notes.some((note) => /aucune information|aucun champ|no header field|states nothing|nothing about the artist|beyond the name/i.test(note)),
+      payload.notes.some((note) =>
+        /aucune information|aucun champ|no header field|states nothing|nothing about the artist|beyond the name/i.test(
+          note,
+        ),
+      ),
     ).toBe(false);
   });
 });
