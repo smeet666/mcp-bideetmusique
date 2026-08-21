@@ -1,5 +1,14 @@
 # mcp-bideetmusique
 
+[![npm](https://img.shields.io/npm/v/mcp-bideetmusique.svg)](https://www.npmjs.com/package/mcp-bideetmusique)
+[![CI](https://github.com/smeet666/mcp-bideetmusique/actions/workflows/ci.yml/badge.svg)](https://github.com/smeet666/mcp-bideetmusique/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/mcp-bideetmusique.svg)](./LICENSE)
+[![MCP Registry](https://img.shields.io/badge/MCP_Registry-listed-6E56CF)](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.smeet666/mcp-bideetmusique)
+[![Glama](https://glama.ai/mcp/servers/smeet666/mcp-bideetmusique/badges/score.svg)](https://glama.ai/mcp/servers/smeet666/mcp-bideetmusique)
+[![M8ven](https://m8ven.ai/badge/mcp/smeet666-mcp-bideetmusique-1n4meg?variant=verified)](https://m8ven.ai/mcp/smeet666-mcp-bideetmusique-1n4meg)
+[![Install in Cursor](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=bideetmusique&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIm1jcC1iaWRlZXRtdXNpcXVlIl19)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat&logo=visualstudiocode&logoColor=white)](https://insiders.vscode.dev/redirect/mcp/install?name=bideetmusique&config=%7B%22name%22%3A%22bideetmusique%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22mcp-bideetmusique%22%5D%7D)
+
 An MCP server for [Bide & Musique](https://www.bide-et-musique.com), the online
 station and hand-built catalogue of French songs that fame passed by. No API key,
 no account, read-only.
