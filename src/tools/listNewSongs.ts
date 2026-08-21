@@ -80,7 +80,9 @@ export async function runListNewSongs(
     const shown = data.songs.slice(0, args.limit);
 
     const notes: string[] = [];
-    if (cached) notes.push("Served from this server's short-lived in-memory cache.");
+    if (cached) {
+      notes.push("Served from this server's short-lived in-memory cache.");
+    }
 
     notes.push(
       `Bide & Musique publishes ${data.published} entries here, and this feed is the whole of ` +
@@ -130,7 +132,7 @@ export async function runListNewSongs(
     };
 
     const lines = shown.map((song) => {
-      const day = song.publishedAt !== null ? `${song.publishedAt} · ` : "";
+      const day = song.publishedAt === null ? "" : `${song.publishedAt} · `;
       return `${day}${song.listedAs} : ${song.url}`;
     });
 

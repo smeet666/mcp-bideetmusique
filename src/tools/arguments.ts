@@ -30,7 +30,9 @@ export function strictInput<Shape extends z.ZodRawShape>(shape: Shape) {
       ? unknownArgumentMessage(issue.keys, declared)
       : `[${INVALID_INPUT}] ${defaultMessage(issue)}`;
 
-  for (const argument of Object.values(shape)) carryTheCode(argument, refuse);
+  for (const argument of Object.values(shape)) {
+    carryTheCode(argument, refuse);
+  }
 
   return z.strictObject(shape, { error: refuse });
 }
@@ -53,11 +55,15 @@ function carryTheCode(schema: z.core.$ZodType, refuse: z.core.$ZodErrorMap): voi
   };
 
   definition.error = refuse;
-  for (const check of definition.checks ?? []) check._zod.def.error = refuse;
+  for (const check of definition.checks ?? []) {
+    check._zod.def.error = refuse;
+  }
 
   // A default, an optional or any other wrapper answers for its own shape and
   // leaves the bounds to the type it wraps.
-  if (definition.innerType) carryTheCode(definition.innerType, refuse);
+  if (definition.innerType) {
+    carryTheCode(definition.innerType, refuse);
+  }
 }
 
 function unknownArgumentMessage(keys: readonly string[], declared: readonly string[]): string {
@@ -85,10 +91,14 @@ function unknownArgumentMessage(keys: readonly string[], declared: readonly stri
 function nearestArgument(key: string, declared: readonly string[]): string | undefined {
   const flatten = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
   const flat = flatten(key);
-  if (flat.length === 0) return undefined;
+  if (flat.length === 0) {
+    return undefined;
+  }
 
   const sameName = declared.find((name) => flatten(name) === flat);
-  if (sameName) return sameName;
+  if (sameName) {
+    return sameName;
+  }
 
   // Either name may be the longer one: a caller can qualify a name this tool
   // keeps plain, or shorten one it spells out.
@@ -98,7 +108,9 @@ function nearestArgument(key: string, declared: readonly string[]): string | und
     // Two characters in common say nothing; three start to.
     return shorter.length >= 3 && (longer.startsWith(shorter) || longer.endsWith(shorter));
   });
-  if (overlapping) return overlapping;
+  if (overlapping) {
+    return overlapping;
+  }
 
   let closest: string | undefined;
   let shortest = Number.POSITIVE_INFINITY;

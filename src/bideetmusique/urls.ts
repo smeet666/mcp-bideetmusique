@@ -71,7 +71,9 @@ export function buildSearchUrl({ query, searchType, page = 1 }: SearchUrlInput):
   const url = new URL(`${BASE_URL}/recherche.html`);
   url.searchParams.set("kw", query);
   url.searchParams.set("st", String(code));
-  if (page > 1) url.searchParams.set("Page", String(Math.floor(page)));
+  if (page > 1) {
+    url.searchParams.set("Page", String(Math.floor(page)));
+  }
   return url.toString();
 }
 
@@ -103,7 +105,9 @@ export function artistUrl(id: string): string {
 export function extractSongId(rawUrl: string): string | null {
   let path = rawUrl;
   if (/^https?:\/\//i.test(rawUrl)) {
-    if (!isBideHost(rawUrl)) return null;
+    if (!isBideHost(rawUrl)) {
+      return null;
+    }
     path = new URL(rawUrl).pathname;
   }
   return /^\/song\/(\d+)\.html$/i.exec(path)?.[1] ?? null;
@@ -117,7 +121,9 @@ export function isBideHost(rawUrl: string): boolean {
   } catch {
     return false;
   }
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return false;
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return false;
+  }
   return ALLOWED_HOSTS.has(parsed.hostname.toLowerCase());
 }
 

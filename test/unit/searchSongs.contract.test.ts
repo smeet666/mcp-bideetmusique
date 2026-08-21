@@ -125,7 +125,9 @@ describe("rule 5 — rows served for a page past the last are never presented as
     const payload = structured(result) as unknown as Record<string, unknown>;
 
     for (const [key, value] of Object.entries(payload)) {
-      if (key === "page_requested" || key === "notes") continue;
+      if (key === "page_requested" || key === "notes") {
+        continue;
+      }
       expect(value).not.toBe(99);
       expect(JSON.stringify(value) ?? "").not.toMatch(/\b99\b/);
     }
@@ -140,7 +142,9 @@ describe("rule 5 — rows served for a page past the last are never presented as
     const payload = structured(result);
 
     for (const note of payload.notes) {
-      if (note.includes("99")) expect(note).toContain("3");
+      if (note.includes("99")) {
+        expect(note).toContain("3");
+      }
     }
   });
 });

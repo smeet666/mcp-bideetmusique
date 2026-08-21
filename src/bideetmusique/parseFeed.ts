@@ -51,7 +51,9 @@ function decodeFeedText(text: string): string {
   let current = text;
   for (let pass = 0; pass < MAX_DECODE_PASSES; pass += 1) {
     const decoded = decodeEntities(current);
-    if (decoded === current) break;
+    if (decoded === current) {
+      break;
+    }
     current = decoded;
   }
 
@@ -74,7 +76,9 @@ export function parseNewSongs(xml: string, url: string): NewSongsFeed {
     published += 1;
     const item = match[1] ?? "";
     const songId = SONG_LINK.exec(LINK.exec(item)?.[1] ?? "")?.[1];
-    if (!songId) continue;
+    if (!songId) {
+      continue;
+    }
 
     const listedAs = decodeFeedText(TITLE.exec(item)?.[1] ?? "").trim();
     const at = listedAs.indexOf(SEPARATOR);
@@ -100,10 +104,14 @@ export function parseNewSongs(xml: string, url: string): NewSongsFeed {
 
 /** The day an entry was published, or nothing when it states none readably. */
 function readDate(raw: string | undefined): string | null {
-  if (raw === undefined) return null;
+  if (raw === undefined) {
+    return null;
+  }
 
   const at = new Date(raw.trim());
-  if (Number.isNaN(at.getTime())) return null;
+  if (Number.isNaN(at.getTime())) {
+    return null;
+  }
 
   // A year outside the four digits an ISO date holds is written with a sign and
   // six digits, and taking its first ten characters names no day at all.

@@ -29,8 +29,12 @@ const LATIN_LABELS = new Set([
 export function charsetFromContentType(contentType?: string | null): string {
   const match = /charset\s*=\s*"?([\w-]+)"?/i.exec(contentType ?? "");
   const label = match?.[1]?.toLowerCase();
-  if (!label) return DEFAULT_CHARSET;
-  if (LATIN_LABELS.has(label)) return DEFAULT_CHARSET;
+  if (!label) {
+    return DEFAULT_CHARSET;
+  }
+  if (LATIN_LABELS.has(label)) {
+    return DEFAULT_CHARSET;
+  }
   return label;
 }
 
@@ -106,7 +110,9 @@ export function decodeEntities(text: string): string {
     if (body.startsWith("#")) {
       const isHex = body[1] === "x" || body[1] === "X";
       const code = Number.parseInt(isHex ? body.slice(2) : body.slice(1), isHex ? 16 : 10);
-      if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff) return whole;
+      if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff) {
+        return whole;
+      }
       try {
         return String.fromCodePoint(code);
       } catch {
@@ -114,7 +120,9 @@ export function decodeEntities(text: string): string {
       }
     }
     const exact = NAMED_ENTITIES[body];
-    if (exact !== undefined) return exact;
+    if (exact !== undefined) {
+      return exact;
+    }
     const lower = NAMED_ENTITIES[body.toLowerCase()];
     return lower ?? whole;
   });

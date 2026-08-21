@@ -74,8 +74,8 @@ describe("a caller that stopped waiting", () => {
           return new Response(
             bytesOf(
               `<?xml version="1.0" encoding="UTF-8" ?><rss version="2.0"><channel>` +
-                `<item><title>A - Un</title><link>https://www.bide-et-musique.com/song/38579.html</link></item>` +
-                `</channel></rss>`,
+                "<item><title>A - Un</title><link>https://www.bide-et-musique.com/song/38579.html</link></item>" +
+                "</channel></rss>",
             ),
             { status: 200, headers: { "content-type": "text/xml; charset=utf-8" } },
           );

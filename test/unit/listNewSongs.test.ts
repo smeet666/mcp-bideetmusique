@@ -25,7 +25,7 @@ function feed(entries: Entry[]): string {
       ({ id, line }) =>
         `<item><title>${line}</title>` +
         `<link>http://www.bide-et-musique.com/song/${id}.html</link>` +
-        `<pubDate>Sun, 16 Aug 2026 20:00:34 +0200</pubDate></item>`,
+        "<pubDate>Sun, 16 Aug 2026 20:00:34 +0200</pubDate></item>",
     )
     .join("");
 
@@ -44,7 +44,9 @@ function feedOf(size: number): string {
 }
 
 function payload(result: ToolResult): Record<string, unknown> {
-  if (!result.structuredContent) throw new Error("the tool returned no structuredContent");
+  if (!result.structuredContent) {
+    throw new Error("the tool returned no structuredContent");
+  }
   return result.structuredContent;
 }
 
@@ -55,7 +57,7 @@ async function run(body: string, limit = 20): Promise<ToolResult> {
 describe("the entries it answers with", () => {
   it("reads each entry into a record, an artist and a song", async () => {
     const result = await run(feed([{ id: 38578, line: "Georgette Plana - La France en rose" }]));
-    const [first] = payload(result).results as Array<Record<string, unknown>>;
+    const [first] = payload(result).results as Record<string, unknown>[];
 
     expect(first).toEqual({
       song_id: "38578",
@@ -111,7 +113,7 @@ describe("what the count is allowed to mean", () => {
 describe("a line the feed names no artist on", () => {
   it("comes back naming none rather than one cut out of the song", async () => {
     const result = await run(feed([{ id: 7, line: "Une ligne sans separateur" }]));
-    const [first] = payload(result).results as Array<Record<string, unknown>>;
+    const [first] = payload(result).results as Record<string, unknown>[];
 
     expect(first!.artist_name).toBeNull();
     expect(first!.title).toBe("Une ligne sans separateur");
@@ -161,7 +163,7 @@ describe("the charset the feed declares", () => {
     });
 
     const result = await runListNewSongs(client, { limit: 20 });
-    const [first] = payload(result).results as Array<Record<string, unknown>>;
+    const [first] = payload(result).results as Record<string, unknown>[];
 
     expect(first!.artist_name).toBe("Georgette Planà");
     expect(first!.title).toBe("L'été où tout a brûlé");

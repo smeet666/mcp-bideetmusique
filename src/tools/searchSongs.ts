@@ -11,6 +11,7 @@ import { invalidInput } from "../errors.js";
 import { strictInput } from "./arguments.js";
 import { noteIfTextIsCut, ok, toToolError } from "./shared.js";
 import type { ToolResult } from "./shared.js";
+import type { SearchPage } from "../types.js";
 
 export const searchSongsDescription = [
   "Search the Bide & Musique collection: French songs, mostly forgotten ones, catalogued by hand",
@@ -173,14 +174,20 @@ function carriedBy(texts: string[], query: string): Carried {
     .split(" ")
     .filter((word) => word.length > 2);
   // Nothing long enough to look for: the rows cannot disagree with the query.
-  if (words.length === 0) return "word";
+  if (words.length === 0) {
+    return "word";
+  }
 
   const haystacks = texts.map((text) => ` ${fold(text)} `);
   const carries = (test: (haystack: string, word: string) => boolean) =>
     haystacks.some((haystack) => words.some((word) => test(haystack, word)));
 
-  if (carries((haystack, word) => haystack.includes(` ${word} `))) return "word";
-  if (carries((haystack, word) => haystack.includes(` ${word}`))) return "opening";
+  if (carries((haystack, word) => haystack.includes(` ${word} `))) {
+    return "word";
+  }
+  if (carries((haystack, word) => haystack.includes(` ${word}`))) {
+    return "opening";
+  }
   return "inside";
 }
 
@@ -210,6 +217,77 @@ const INVISIBLE_MATCH: Partial<Record<SearchType, string>> = {
   label: "the label the record came out on",
   year: "the year printed on the record",
 };
+
+/**
+ * What the answer owes a reader beyond the rows themselves.
+ *
+ * Each sentence answers a question the rows cannot: which axis was searched and
+ * what that says about the others, whether the site matched inside a word, and
+ * whether it matched on something these rows do not show.
+ */
+function notesOnWhatTheSiteAnswered(
+  data: SearchPage,
+  args: SearchSongsArgs,
+  query: string,
+): string[] {
+  const notes: string[] = [];
+
+  if (data.redirectedToSong) {
+    notes.push(
+      "Exactly one song matched, so Bide & Musique answered with that song's own page instead of " +
+        "a list. The row therefore comes from the record itself and states no programming marker.",
+    );
+  }
+
+  if (data.songs.length === 0) {
+    notes.push(
+      `Bide & Musique found no song for "${query}" on the ${SEARCH_TYPE_LABELS[args.search_type]} ` +
+        "axis, which says nothing about the other axes. A name can be a title, a title can be a " +
+        "line of a song, a label can be a word, and someone who wrote a record may never have " +
+        "sung on one.",
+    );
+  }
+
+  if (data.songs.length > args.limit) {
+    notes.push(
+      `This page holds ${data.songs.length} songs; showing the first ${args.limit}. Bide & Musique ` +
+        "orders rows by performer and then by title, never by how well a row matches, so these are " +
+        "the head of an alphabetical list rather than the closest matches.",
+    );
+  }
+
+  const field = MATCHED_FIELD[args.search_type];
+  if (field && data.songs.length > 0) {
+    const carried = carriedBy(
+      data.songs.map((song) => field.of(song)),
+      query,
+    );
+    if (carried === "opening") {
+      notes.push(
+        `No ${field.noun} here carries "${query}" as a whole word; it only opens one. Bide & ` +
+          "Musique matches inside words, so a longer word starting with those letters counts as a " +
+          "match.",
+      );
+    }
+    if (carried === "inside") {
+      notes.push(
+        `No ${field.noun} here carries "${query}" as a word at all. Bide & Musique matches inside ` +
+          'words, so searching "Bino" brings back records of "Bambino". Read these as rows the site ' +
+          "offered for that spelling rather than as matches for the word itself.",
+      );
+    }
+  }
+
+  const matchedOn = INVISIBLE_MATCH[args.search_type];
+  if (matchedOn && data.songs.length > 0) {
+    notes.push(
+      `The match was made on ${matchedOn}, which these rows do not show, so a title that looks ` +
+        "unrelated to the query is expected here. Open the song page to see what matched.",
+    );
+  }
+
+  return notes;
+}
 
 export async function runSearchSongs(
   client: BideEtMusiqueClient,
@@ -250,69 +328,19 @@ export async function runSearchSongs(
     );
 
     const notes: string[] = [];
-    if (cached) notes.push("Served from this server's short-lived in-memory cache.");
+    if (cached) {
+      notes.push("Served from this server's short-lived in-memory cache.");
+    }
 
     if (data.pageServed !== null && data.pageServed !== args.page) {
       notes.push(
         `Page ${args.page} was requested and Bide & Musique served page ${data.pageServed}. The site ` +
           "answers a page past the last one with the last page rather than an error, so these rows " +
-          `are page ${data.pageServed}${data.pageCount !== null ? ` of ${data.pageCount}` : ""}.`,
+          `are page ${data.pageServed}${data.pageCount === null ? "" : ` of ${data.pageCount}`}.`,
       );
     }
 
-    if (data.redirectedToSong) {
-      notes.push(
-        "Exactly one song matched, so Bide & Musique answered with that song's own page instead of " +
-          "a list. The row therefore comes from the record itself and states no programming marker.",
-      );
-    }
-
-    if (data.songs.length === 0) {
-      notes.push(
-        `Bide & Musique found no song for "${query}" on the ${SEARCH_TYPE_LABELS[args.search_type]} ` +
-          "axis, which says nothing about the other axes. A name can be a title, a title can be a " +
-          "line of a song, a label can be a word, and someone who wrote a record may never have " +
-          "sung on one.",
-      );
-    }
-
-    if (data.songs.length > args.limit) {
-      notes.push(
-        `This page holds ${data.songs.length} songs; showing the first ${args.limit}. Bide & Musique ` +
-          "orders rows by performer and then by title, never by how well a row matches, so these are " +
-          "the head of an alphabetical list rather than the closest matches.",
-      );
-    }
-
-    const field = MATCHED_FIELD[args.search_type];
-    if (field && data.songs.length > 0) {
-      const carried = carriedBy(
-        data.songs.map((song) => field.of(song)),
-        query,
-      );
-      if (carried === "opening") {
-        notes.push(
-          `No ${field.noun} here carries "${query}" as a whole word; it only opens one. Bide & ` +
-            "Musique matches inside words, so a longer word starting with those letters counts as a " +
-            "match.",
-        );
-      }
-      if (carried === "inside") {
-        notes.push(
-          `No ${field.noun} here carries "${query}" as a word at all. Bide & Musique matches inside ` +
-            'words, so searching "Bino" brings back records of "Bambino". Read these as rows the site ' +
-            "offered for that spelling rather than as matches for the word itself.",
-        );
-      }
-    }
-
-    const matchedOn = INVISIBLE_MATCH[args.search_type];
-    if (matchedOn && data.songs.length > 0) {
-      notes.push(
-        `The match was made on ${matchedOn}, which these rows do not show, so a title that looks ` +
-          "unrelated to the query is expected here. Open the song page to see what matched.",
-      );
-    }
+    notes.push(...notesOnWhatTheSiteAnswered(data, args, query));
 
     if (query.includes('"')) {
       notes.push(

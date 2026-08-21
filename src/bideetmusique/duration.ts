@@ -8,6 +8,17 @@
  * unit actually stated travels with the number.
  */
 
+/** The finest unit the line actually wrote, which is what its figures are held to. */
+function finestUnitWritten(minutes: number | null, seconds: number | null): DurationPrecision {
+  if (seconds !== null) {
+    return "second";
+  }
+  if (minutes !== null) {
+    return "minute";
+  }
+  return "hour";
+}
+
 export type DurationPrecision = "second" | "minute" | "hour";
 
 export interface Duration {
@@ -43,12 +54,20 @@ export function parseDuration(raw: string | null | undefined): Duration {
   PART.lastIndex = 0;
   for (let match = PART.exec(normalised); match !== null; match = PART.exec(normalised)) {
     const value = Number.parseInt(match[1] ?? "", 10);
-    if (!Number.isFinite(value)) continue;
+    if (!Number.isFinite(value)) {
+      continue;
+    }
     // The first statement of a unit wins: a value repeated later in the line
     // belongs to something else, and overwriting would silently prefer it.
-    if (match[2] === "h" && hours === null) hours = value;
-    if (match[2] === "m" && minutes === null) minutes = value;
-    if (match[2] === "s" && seconds === null) seconds = value;
+    if (match[2] === "h" && hours === null) {
+      hours = value;
+    }
+    if (match[2] === "m" && minutes === null) {
+      minutes = value;
+    }
+    if (match[2] === "s" && seconds === null) {
+      seconds = value;
+    }
   }
 
   if (hours === null && minutes === null && seconds === null) {
@@ -58,13 +77,14 @@ export function parseDuration(raw: string | null | undefined): Duration {
   // Values are taken as written. "2 m 90 s" is 210 seconds: the site published
   // that, and correcting it would report a length no record states.
   const total = (hours ?? 0) * 3600 + (minutes ?? 0) * 60 + (seconds ?? 0);
-  const precision: DurationPrecision =
-    seconds !== null ? "second" : minutes !== null ? "minute" : "hour";
+  const precision: DurationPrecision = finestUnitWritten(minutes, seconds);
 
   // Past what a number counts exactly, the arithmetic stops meaning the figures
   // the page printed. The line is repeated as published and the seconds are
   // left unstated rather than approximated.
-  if (!Number.isSafeInteger(total)) return { text, ...UNREADABLE };
+  if (!Number.isSafeInteger(total)) {
+    return { text, ...UNREADABLE };
+  }
 
   return { text, seconds: total, precision };
 }

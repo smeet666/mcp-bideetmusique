@@ -24,7 +24,7 @@ import { artistUrl, songUrl, toAbsoluteUrl } from "./urls.js";
  * attribute repeats the name with the emphasis around it. Stopping at the first
  * `>` would end the tag inside that attribute and read its remains as the name.
  */
-const TAG_REST = String.raw`(?:[^>"]|"[^"]*")*`;
+const TAG_REST = '(?:[^>"]|"[^"]*")*';
 
 /**
  * How far a name or a title may run inside the heading.
@@ -201,13 +201,17 @@ export function parseSongRecord(html: string, url: string, id: string): Song {
   FIELD.lastIndex = 0;
   for (let match = FIELD.exec(record); match !== null; match = FIELD.exec(record)) {
     const label = foldLabel(textOf(match[1] ?? ""));
-    if (label !== "" && !fields.has(label)) fields.set(label, match[2] ?? "");
+    if (label !== "" && !fields.has(label)) {
+      fields.set(label, match[2] ?? "");
+    }
   }
 
   const raw = (label: string) => fields.get(label);
   const asText = (label: string) => {
     const value = raw(label);
-    if (value === undefined) return null;
+    if (value === undefined) {
+      return null;
+    }
     const text = textOf(value);
     return text === "" ? null : text;
   };
@@ -256,7 +260,9 @@ export function parseSongRecord(html: string, url: string, id: string): Song {
 /** The date the record was catalogued, as an ISO day. */
 function readAddedOn(record: string): string | null {
   const match = ADDED_ON.exec(record);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
 
   const [, day, month, year] = match;
   const iso = `${year}-${month}-${day}`;
@@ -265,14 +271,18 @@ function readAddedOn(record: string): string | null {
   // something the calendar has no room for. An ISO-shaped string that names no
   // day would be read as a date by everything downstream.
   const at = new Date(`${iso}T00:00:00Z`);
-  if (Number.isNaN(at.getTime()) || at.toISOString().slice(0, 10) !== iso) return null;
+  if (Number.isNaN(at.getTime()) || at.toISOString().slice(0, 10) !== iso) {
+    return null;
+  }
 
   return iso;
 }
 
 function readTop50(record: string): Top50 | null {
   const match = TOP50.exec(textOf(record));
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   const times = Number.parseInt(match[1] ?? "", 10);
   const within = Number.parseInt(match[2] ?? "", 10);
   return Number.isFinite(times) && Number.isFinite(within) ? { times, within } : null;
@@ -285,10 +295,12 @@ function readTop50(record: string): Top50 | null {
  * than a related act, so it is left out.
  */
 function readSeeAlso(record: string, artistId: string): ArtistLink[] {
-  const start = record.search(EXTRA_BLOCK) >= 0 ? record.search(EXTRA_BLOCK) : 0;
+  const start = Math.max(record.search(EXTRA_BLOCK), 0);
   const block = record.slice(start);
   const seeAlsoAt = block.search(SEE_ALSO);
-  if (seeAlsoAt < 0) return [];
+  if (seeAlsoAt < 0) {
+    return [];
+  }
 
   const window = block.slice(seeAlsoAt, seeAlsoAt + 2000);
   const links: ArtistLink[] = [];
@@ -298,7 +310,9 @@ function readSeeAlso(record: string, artistId: string): ArtistLink[] {
   for (let match = ARTIST_ANCHOR.exec(window); match !== null; match = ARTIST_ANCHOR.exec(window)) {
     const id = match[1];
     const name = textOf(match[2] ?? "");
-    if (!id || name === "" || seen.has(id)) continue;
+    if (!id || name === "" || seen.has(id)) {
+      continue;
+    }
     seen.add(id);
     links.push({ id, name, url: artistUrl(id) });
   }
@@ -308,14 +322,18 @@ function readSeeAlso(record: string, artistId: string): ArtistLink[] {
 function readFavourites(text: string): number | null {
   for (const pattern of FAVOURITES) {
     const value = readNumber(pattern, text);
-    if (value !== null) return value;
+    if (value !== null) {
+      return value;
+    }
   }
   return null;
 }
 
 function readNumber(pattern: RegExp, text: string): number | null {
   const match = pattern.exec(text);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   const value = Number.parseInt(match[1] ?? "", 10);
   return Number.isFinite(value) ? value : null;
 }
@@ -328,15 +346,21 @@ function readNumber(pattern: RegExp, text: string): number | null {
  * readings without either borrowing from the other.
  */
 function withoutTranscription(html: string, lyricsAt: number): string {
-  if (lyricsAt < 0) return html;
+  if (lyricsAt < 0) {
+    return html;
+  }
 
   const block = html.slice(lyricsAt, lyricsAt + MAX_LYRICS_LENGTH);
   const opening = LYRICS_CELL.exec(block);
-  if (!opening) return html;
+  if (!opening) {
+    return html;
+  }
 
   const from = lyricsAt + opening.index + opening[0].length;
   const end = CELL_END.exec(html.slice(from, from + MAX_LYRICS_LENGTH));
-  if (!end) return html.slice(0, from);
+  if (!end) {
+    return html.slice(0, from);
+  }
 
   return html.slice(0, from) + html.slice(from + end.index);
 }
@@ -344,7 +368,9 @@ function withoutTranscription(html: string, lyricsAt: number): string {
 function readComments(html: string): CommentCount | null {
   const plain = textOf(html);
   const count = readNumber(COMMENTS, plain);
-  if (count === null) return null;
+  if (count === null) {
+    return null;
+  }
   return { count, archived: readNumber(ARCHIVED, plain) };
 }
 
@@ -381,14 +407,18 @@ function readLyrics(html: string, lyricsAt: number, url: string): LyricsInfo {
  */
 function readLyricsText(block: string): string | null {
   const opening = LYRICS_CELL.exec(block);
-  if (!opening) return null;
+  if (!opening) {
+    return null;
+  }
 
   const afterOpening = block.slice(opening.index + opening[0].length);
   const end = CELL_END.exec(afterOpening);
   // A cell running past the window has no end in view, so what fits is a piece
   // of a transcription. Returning it would publish a cut one under a field
   // saying the words are as published.
-  if (!end) return null;
+  if (!end) {
+    return null;
+  }
   const cell = afterOpening.slice(0, end.index);
 
   const credit = TRANSCRIBER_MARKER.exec(cell);
@@ -397,8 +427,12 @@ function readLyricsText(block: string): string | null {
   // Only `<br>` breaks a line. The newlines the markup itself carries sit
   // inside a line and are folded away with the rest of its whitespace.
   const lines = published.split(LINE_BREAK).map(textOf);
-  while (lines.length > 0 && lines[0] === "") lines.shift();
-  while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+  while (lines.length > 0 && lines[0] === "") {
+    lines.shift();
+  }
+  while (lines.length > 0 && lines.at(-1) === "") {
+    lines.pop();
+  }
 
   const text = lines.join("\n");
   return text === "" ? null : text;

@@ -143,7 +143,7 @@ describe("a record breaking one property", () => {
  * which is the half that ships.
  */
 describe("a record the reader produced", () => {
-  const SHAPES: Array<[string, RecordOptions]> = [
+  const SHAPES: [string, RecordOptions][] = [
     ["a page crediting a transcriber", { lyrics: { transcriber: "Dam-Dam" } }],
     ["a page crediting none, whose cell the site never closes", { lyrics: { unterminated: true } }],
     ["a page whose cell holds nothing", { lyrics: { lines: [] } }],

@@ -117,7 +117,7 @@ export class BideEtMusiqueClient {
    */
   async search(input: SearchInput, signal?: AbortSignal): Promise<Outcome<SearchPage>> {
     const url = buildSearchUrl(input);
-    return this.fetchParsed(
+    return await this.fetchParsed(
       url,
       ({ html, finalUrl }) => {
         const songId = extractSongId(finalUrl);
@@ -153,7 +153,7 @@ export class BideEtMusiqueClient {
       );
     }
     const url = songUrl(id);
-    return this.fetchParsed(
+    return await this.fetchParsed(
       url,
       ({ html, finalUrl }) => parseSongRecord(html, finalUrl, id),
       signal,
@@ -169,7 +169,7 @@ export class BideEtMusiqueClient {
       );
     }
     const url = artistUrl(id);
-    return this.fetchParsed(
+    return await this.fetchParsed(
       url,
       ({ html, finalUrl }) => parseArtistPage(html, finalUrl, id),
       signal,
@@ -179,7 +179,11 @@ export class BideEtMusiqueClient {
   /** The records the collection has just catalogued, newest first. */
   async getNewSongs(signal?: AbortSignal): Promise<Outcome<NewSongsFeed>> {
     const url = newSongsFeedUrl();
-    return this.fetchParsed(url, ({ html, finalUrl }) => parseNewSongs(html, finalUrl), signal);
+    return await this.fetchParsed(
+      url,
+      ({ html, finalUrl }) => parseNewSongs(html, finalUrl),
+      signal,
+    );
   }
 
   /**
@@ -200,7 +204,9 @@ export class BideEtMusiqueClient {
     let highest = 0;
     for (const song of data.songs) {
       const id = Number.parseInt(song.songId, 10);
-      if (Number.isFinite(id) && id > highest) highest = id;
+      if (Number.isFinite(id) && id > highest) {
+        highest = id;
+      }
     }
 
     // A feed shaped like a feed while naming no usable id would otherwise hand
@@ -265,7 +271,9 @@ export class BideEtMusiqueClient {
     try {
       return { data: (await this.awaited(entry, signal, url)) as T, cached: false };
     } finally {
-      if (this.inFlight.get(url) === entry) this.inFlight.delete(url);
+      if (this.inFlight.get(url) === entry) {
+        this.inFlight.delete(url);
+      }
     }
   }
 
@@ -281,19 +289,25 @@ export class BideEtMusiqueClient {
 
     // A caller with no signal can never give up, so its share of the count is
     // never released: the read stays wanted for as long as it is waiting.
-    if (signal === undefined) return entry.promise;
+    if (signal === undefined) {
+      return entry.promise;
+    }
 
     try {
       return await Promise.race([
         entry.promise,
         new Promise<never>((_, reject) => {
-          if (signal.aborted) return reject(givenUp(url));
+          if (signal.aborted) {
+            return reject(givenUp(url));
+          }
           signal.addEventListener("abort", () => reject(givenUp(url)), { once: true });
         }),
       ]);
     } finally {
       entry.waiting -= 1;
-      if (entry.waiting <= 0) entry.controller.abort();
+      if (entry.waiting <= 0) {
+        entry.controller.abort();
+      }
     }
   }
 }

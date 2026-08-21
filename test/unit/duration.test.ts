@@ -19,7 +19,7 @@ describe("parseDuration", () => {
     });
 
     it("reads the other minute-and-second durations of the collection", () => {
-      const cases: Array<[string, number]> = [
+      const cases: [string, number][] = [
         ["1 m 1 s", 61],
         ["2 m 30 s", 150],
         ["3 m 59 s", 239],
@@ -46,7 +46,7 @@ describe("parseDuration", () => {
     });
 
     it("reads the neighbouring minute-only durations at minute precision", () => {
-      const cases: Array<[string, number]> = [
+      const cases: [string, number][] = [
         ["1 m", 60],
         ["4 m", 240],
         ["59 m", 3540],
@@ -80,7 +80,7 @@ describe("parseDuration", () => {
     });
 
     it("reads the neighbouring second-only durations at second precision", () => {
-      const cases: Array<[string, number]> = [
+      const cases: [string, number][] = [
         ["1 s", 1],
         ["59 s", 59],
         ["60 s", 60],
@@ -122,7 +122,7 @@ describe("parseDuration", () => {
     });
 
     it("reads the neighbouring hour durations", () => {
-      const cases: Array<[string, number, DurationPrecision]> = [
+      const cases: [string, number, DurationPrecision][] = [
         ["2 h", 7200, "hour"],
         ["1 h 59 m", 7140, "minute"],
         ["1 h 59 m 59 s", 7199, "second"],
@@ -180,7 +180,7 @@ describe("parseDuration", () => {
     });
 
     it("keeps minutes at or above 60 as written", () => {
-      const cases: Array<[string, number]> = [
+      const cases: [string, number][] = [
         ["60 m", 3600],
         ["61 m", 3660],
         ["120 m", 7200],
@@ -213,7 +213,7 @@ describe("parseDuration", () => {
     });
 
     it("reads the neighbouring overflowing seconds as written", () => {
-      const cases: Array<[string, number]> = [
+      const cases: [string, number][] = [
         ["0 m 75 s", 75],
         ["1 m 60 s", 120],
         ["4 m 120 s", 360],
