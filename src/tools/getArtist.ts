@@ -11,7 +11,7 @@ import type { ToolResult } from "./shared.js";
 export const getArtistDescription = [
   "Read an artist's page on Bide & Musique: the names they recorded under, what the catalogue notes",
   "about them, and every song of theirs the collection holds, each with its year.",
-  "Takes the 'artist_id' that search_songs and get_song return.",
+  "Takes the 'artist_id' that search_songs, get_song and get_random_song return.",
   "An artist page is a way into a discography rather than a biography: half of them state nothing",
   "beyond the name, and the median artist has one record here. Fields the page does not state come",
   "back null or empty, which is the ordinary state of this catalogue rather than a failed read.",
@@ -27,7 +27,8 @@ export const getArtistInput = strictInput({
     .max(20)
     .regex(/^\d+$/)
     .describe(
-      "The artist id returned by search_songs or get_song, digits only, for example '290'.",
+      "The artist id returned by search_songs, get_song or get_random_song, digits only, for " +
+        "example '290'.",
     ),
   limit: z
     .number()

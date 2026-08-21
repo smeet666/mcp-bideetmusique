@@ -170,6 +170,7 @@ function answer(
     data.writers.length > 0 ? `Auteurs compositeurs : ${data.writers.join(", ")}` : null,
     `Durée : ${data.duration.text}`,
     data.labels.length > 0 ? `Label : ${data.labels.join(", ")}` : null,
+    `song_id : ${data.id} · artist_id : ${data.artist.id}`,
     data.url,
   ].filter((line): line is string => line !== null);
 
