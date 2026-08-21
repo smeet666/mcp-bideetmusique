@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-08-19
+## [1.0.0] - 2026-08-21
 
 The surface is settled: five tools, their arguments and their output schemas are
 what callers can build on, and a change to any of them will carry a major
@@ -17,6 +17,9 @@ version. What follows is what this release adds and fixes over 0.3.0.
   A page under way is shared by the callers waiting for it and abandoned only
   once the last of them has gone.
 - `get_random_song` takes `include_lyrics`, like `get_song`.
+- `get_song` and `get_random_song` state the record's id and the artist's id in
+  the text they render, under the names the tools take them by, so a record read
+  as text can be carried on to `get_artist` without digging through the payload.
 
 ### Fixed
 
@@ -33,6 +36,7 @@ version. What follows is what this release adds and fixes over 0.3.0.
   length past what a number counts exactly are left unstated rather than
   reported as values.
 - A title the feed publishes reaches no field as markup.
+- The note naming a counter the record does not print reads as a sentence.
 
 ## [0.3.0] - 2026-08-16
 

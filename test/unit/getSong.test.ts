@@ -472,6 +472,18 @@ describe("rule 10 — a missing counter is not a zero, and the notes say so", ()
     ).toBe(true);
   });
 
+  it("writes the sentence about the counters as a sentence", async () => {
+    // The list is spliced into "prints no …", so an entry carrying its own
+    // article reads as "prints no the favourite count".
+    const both = songPayload(await run({ favourites: null, comments: null }));
+    const one = songPayload(
+      await run({ favourites: null, comments: { count: 5, archived: null } }),
+    );
+
+    expect(both.notes.join(" ")).toContain("prints no favourite count and no comment count");
+    expect(one.notes.join(" ")).toContain("prints no favourite count,");
+  });
+
   it("keeps a printed zero-free counter as the number it is", () => {
     const song = parse({ favourites: 2, comments: { count: 1, archived: null } });
 
@@ -848,5 +860,28 @@ describe("telling the record apart from the song", () => {
 
     expect(song.lyrics.available).toBe(true);
     expect(song.lyrics.rightsNotice).toBe(false);
+  });
+});
+
+/**
+ * What a caller needs to ask the next question.
+ *
+ * A record is read as text far more often than as a payload, and the next
+ * question about it is almost always one of two: the record itself, or the
+ * artist behind it. The text carried the page address and nothing else, so the
+ * artist's id had to be dug out of a payload or guessed from a URL.
+ */
+describe("the ids the answer can be carried on with", () => {
+  it("states the record's id and the artist's id, under the names the tools take", async () => {
+    const text = textOfResult(await run());
+
+    expect(text).toContain(`song_id : ${SONG_ID}`);
+    expect(text).toContain("artist_id : 8842");
+  });
+
+  it("states the artist's id of the record it read, whichever artist that is", async () => {
+    const text = textOfResult(await run({ artistId: "290", artist: "Bino" }));
+
+    expect(text).toContain("artist_id : 290");
   });
 });

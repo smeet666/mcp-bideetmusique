@@ -142,8 +142,8 @@ export async function runGetSong(
     }
 
     const silentCounters = [
-      data.favourites === null ? "the favourite count" : null,
-      data.comments === null ? "the comment count" : null,
+      data.favourites === null ? "favourite count" : null,
+      data.comments === null ? "comment count" : null,
     ].filter((item): item is string => item !== null);
     if (silentCounters.length > 0) {
       notes.push(
@@ -219,6 +219,7 @@ export async function runGetSong(
       data.top50 !== null
         ? `Au TOP 50 de B&M : classé ${data.top50.times} fois dans les ${data.top50.within} premiers`
         : null,
+      `song_id : ${data.id} · artist_id : ${data.artist.id}`,
       data.url,
     ].filter((line): line is string => line !== null);
 

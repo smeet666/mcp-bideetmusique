@@ -237,3 +237,20 @@ describe("a transcription cannot imitate a line the server writes", () => {
     }
   });
 });
+
+/**
+ * The drawn record renders the same card as get_song, so the ids a caller
+ * carries on with have to be on both. A record nobody chose is the case where
+ * they matter most: the caller has no id of their own to start from.
+ */
+describe("the ids the drawn record can be carried on with", () => {
+  it("states the record's id and the artist's id, under the names the tools take", async () => {
+    const { client } = siteServing(new Set([12345]));
+
+    const result = await settle(runGetRandomSong(client, { random: drawing(fractionFor(12345)) }));
+    const text = textOfResult(result);
+
+    expect(text).toContain("song_id : 12345");
+    expect(text).toMatch(/artist_id : \d+/);
+  });
+});
