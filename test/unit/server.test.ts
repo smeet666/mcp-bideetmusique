@@ -30,7 +30,9 @@ describe("the tool the server registers", () => {
     const tool = (await client.listTools()).tools.find((entry) => entry.name === "search_songs");
 
     expect(tool?.outputSchema).toBeDefined();
-    expect(Object.keys((tool?.outputSchema as { properties?: object }).properties ?? {})).toEqual(
+    expect(
+      Object.keys((tool?.outputSchema as { properties?: object } | undefined)?.properties ?? {}),
+    ).toEqual(
       expect.arrayContaining([
         "query",
         "search_type",

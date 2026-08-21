@@ -5,7 +5,13 @@
 
 import { describe, expect, it } from "vitest";
 
-import { BASE_URL, artistUrl, buildSearchUrl, isBideHost, songUrl } from "../../src/bideetmusique/urls.js";
+import {
+  BASE_URL,
+  artistUrl,
+  buildSearchUrl,
+  isBideHost,
+  songUrl,
+} from "../../src/bideetmusique/urls.js";
 
 describe("buildSearchUrl", () => {
   it("encodes the query so it round-trips back to the string that was asked for", () => {
@@ -17,17 +23,27 @@ describe("buildSearchUrl", () => {
   });
 
   it("asks the title axis with st=3 and the performer axis with st=2", () => {
-    expect(new URL(buildSearchUrl({ query: "x", searchType: "title" })).searchParams.get("st")).toBe("3");
-    expect(new URL(buildSearchUrl({ query: "x", searchType: "performer" })).searchParams.get("st")).toBe("2");
+    expect(
+      new URL(buildSearchUrl({ query: "x", searchType: "title" })).searchParams.get("st"),
+    ).toBe("3");
+    expect(
+      new URL(buildSearchUrl({ query: "x", searchType: "performer" })).searchParams.get("st"),
+    ).toBe("2");
   });
 
   it("leaves Page out for the first page and sets Page=2 for the second", () => {
-    expect(new URL(buildSearchUrl({ query: "x", searchType: "title" })).searchParams.get("Page")).toBeNull();
     expect(
-      new URL(buildSearchUrl({ query: "x", searchType: "title", page: 1 })).searchParams.get("Page"),
+      new URL(buildSearchUrl({ query: "x", searchType: "title" })).searchParams.get("Page"),
     ).toBeNull();
     expect(
-      new URL(buildSearchUrl({ query: "x", searchType: "title", page: 2 })).searchParams.get("Page"),
+      new URL(buildSearchUrl({ query: "x", searchType: "title", page: 1 })).searchParams.get(
+        "Page",
+      ),
+    ).toBeNull();
+    expect(
+      new URL(buildSearchUrl({ query: "x", searchType: "title", page: 2 })).searchParams.get(
+        "Page",
+      ),
     ).toBe("2");
   });
 
@@ -51,7 +67,9 @@ describe("buildSearchUrl", () => {
   it("carries a 200-character query through without truncating it", () => {
     const query = "é".repeat(200);
 
-    expect(new URL(buildSearchUrl({ query, searchType: "title" })).searchParams.get("kw")).toBe(query);
+    expect(new URL(buildSearchUrl({ query, searchType: "title" })).searchParams.get("kw")).toBe(
+      query,
+    );
   });
 });
 

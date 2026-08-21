@@ -49,7 +49,9 @@ describe("decodeHtml", () => {
   it("falls back to ISO-8859-1 when the Content-Type names a charset it does not know", () => {
     const bytes = fixtureBytes("search-accents.html");
 
-    expect(decodeHtml(bytes, "text/html; charset=x-unknown-42")).toBe(decodeHtml(bytes, ISO_CONTENT_TYPE));
+    expect(decodeHtml(bytes, "text/html; charset=x-unknown-42")).toBe(
+      decodeHtml(bytes, ISO_CONTENT_TYPE),
+    );
   });
 
   it("accepts an ArrayBuffer as well as a Uint8Array", () => {
@@ -70,7 +72,9 @@ describe("decodeHtml", () => {
 describe("decodeEntities", () => {
   it("turns a named entity into the character it names", () => {
     expect(decodeEntities("Les Frères Ébène &amp; Cie")).toBe("Les Frères Ébène & Cie");
-    expect(decodeEntities("&lt;tag&gt; &quot;quoted&quot; &#39;apos&#39;")).toBe(`<tag> "quoted" 'apos'`);
+    expect(decodeEntities("&lt;tag&gt; &quot;quoted&quot; &#39;apos&#39;")).toBe(
+      `<tag> "quoted" 'apos'`,
+    );
   });
 
   it("turns &nbsp; into a real U+00A0, and never into a plain space", () => {

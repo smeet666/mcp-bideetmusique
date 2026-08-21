@@ -81,13 +81,46 @@ const ORDERED = orderedPairs(AXES);
 const PAIRS_WITH_YEAR = PAIRS.filter((pair) => pair.includes("year"));
 
 /** One invented record per axis, so a row can only come from its own page. */
-const RECORD: Record<SearchType, { songId: string; title: string; artistId: string; artist: string }> = {
-  performer: { songId: "9102", title: "Le mambo du photocopieur", artistId: "912", artist: "Les Cousins Bakélite" },
-  title: { songId: "9103", title: "Cha-cha de la cabine téléphonique", artistId: "913", artist: "Orchestre Pamplemousse" },
-  writer: { songId: "9104", title: "La java du garde-barrière", artistId: "914", artist: "Les Frères Zinzolin" },
-  lyrics: { songId: "9106", title: "Le slow du distributeur", artistId: "916", artist: "Colette Fictive" },
-  label: { songId: "9105", title: "La rumba de l'ascenseur", artistId: "915", artist: "Duo Farandole" },
-  year: { songId: "9107", title: "Le twist du calendrier", artistId: "917", artist: "Les Éphémérides" },
+const RECORD: Record<
+  SearchType,
+  { songId: string; title: string; artistId: string; artist: string }
+> = {
+  performer: {
+    songId: "9102",
+    title: "Le mambo du photocopieur",
+    artistId: "912",
+    artist: "Les Cousins Bakélite",
+  },
+  title: {
+    songId: "9103",
+    title: "Cha-cha de la cabine téléphonique",
+    artistId: "913",
+    artist: "Orchestre Pamplemousse",
+  },
+  writer: {
+    songId: "9104",
+    title: "La java du garde-barrière",
+    artistId: "914",
+    artist: "Les Frères Zinzolin",
+  },
+  lyrics: {
+    songId: "9106",
+    title: "Le slow du distributeur",
+    artistId: "916",
+    artist: "Colette Fictive",
+  },
+  label: {
+    songId: "9105",
+    title: "La rumba de l'ascenseur",
+    artistId: "915",
+    artist: "Duo Farandole",
+  },
+  year: {
+    songId: "9107",
+    title: "Le twist du calendrier",
+    artistId: "917",
+    artist: "Les Éphémérides",
+  },
 };
 
 /** A total per axis, distinct, so a mixed-up count names the axis it came from. */
@@ -113,7 +146,10 @@ const NO_RESULTS_HTML = `<!DOCTYPE html><html><head>
 
 type Answer = { kind: "html"; html: string } | { kind: "status"; status: number };
 
-const rows = (axis: SearchType, query = QUERY): Answer => ({ kind: "html", html: pageFor(axis, query) });
+const rows = (axis: SearchType, query = QUERY): Answer => ({
+  kind: "html",
+  html: pageFor(axis, query),
+});
 const nothing = (): Answer => ({ kind: "html", html: NO_RESULTS_HTML });
 const serverError = (): Answer => ({ kind: "status", status: 500 });
 
@@ -145,7 +181,10 @@ function servingPerAxis(answers: Partial<Record<SearchType, Answer>>): Stub {
     const answer = answers[axisOfUrl(url)];
     if (!answer) throw new Error(`the stub holds no page for this axis: ${url}`);
     if (answer.kind === "status") {
-      return new Response("", { status: answer.status, headers: { "content-type": ISO_CONTENT_TYPE } });
+      return new Response("", {
+        status: answer.status,
+        headers: { "content-type": ISO_CONTENT_TYPE },
+      });
     }
     return htmlResponse(bytesOf(answer.html));
   }) as unknown as typeof fetch;
@@ -264,8 +303,12 @@ describe("rule 2 — a pair names itself", () => {
       const first = await call(client, one);
       const second = await call(client, other);
 
-      expect(textOfResult(first), `${one} must not claim ${other}`).not.toContain(SEARCH_TYPE_LABELS[other]);
-      expect(textOfResult(second), `${other} must not claim ${one}`).not.toContain(SEARCH_TYPE_LABELS[one]);
+      expect(textOfResult(first), `${one} must not claim ${other}`).not.toContain(
+        SEARCH_TYPE_LABELS[other],
+      );
+      expect(textOfResult(second), `${other} must not claim ${one}`).not.toContain(
+        SEARCH_TYPE_LABELS[one],
+      );
     }
   });
 });
@@ -279,8 +322,14 @@ describe("rule 3 — nothing is merged", () => {
       const second = structured(await call(client, other));
       const label = `${one} then ${other}`;
 
-      expect(first.results.map((row) => row.song_id), label).toEqual([RECORD[one].songId]);
-      expect(second.results.map((row) => row.song_id), label).toEqual([RECORD[other].songId]);
+      expect(
+        first.results.map((row) => row.song_id),
+        label,
+      ).toEqual([RECORD[one].songId]);
+      expect(
+        second.results.map((row) => row.song_id),
+        label,
+      ).toEqual([RECORD[other].songId]);
       expect(first.results[0]!.title, label).toBe(RECORD[one].title);
       expect(second.results[0]!.title, label).toBe(RECORD[other].title);
     }
@@ -327,7 +376,10 @@ describe("rule 4 — the cache does not cross axes", () => {
       const label = `${one} then ${other}`;
 
       expect(second.search_type, label).toBe(other);
-      expect(second.results.map((row) => row.song_id), label).toEqual([RECORD[other].songId]);
+      expect(
+        second.results.map((row) => row.song_id),
+        label,
+      ).toEqual([RECORD[other].songId]);
       expect(second.total_matches, label).toBe(totalFor(other));
       expect(second.results[0]!.song_id, label).not.toBe(first.results[0]!.song_id);
       expect(second.total_matches, label).not.toBe(first.total_matches);
@@ -358,9 +410,10 @@ describe("rule 5 — the cache still works within one axis", () => {
       const second = structured(await call(client, axis));
 
       expect(stub.urls, axis).toHaveLength(1);
-      expect(second.results.map((row) => row.song_id), axis).toEqual(
-        first.results.map((row) => row.song_id),
-      );
+      expect(
+        second.results.map((row) => row.song_id),
+        axis,
+      ).toEqual(first.results.map((row) => row.song_id));
       expect(second.total_matches, axis).toBe(first.total_matches);
     }
   });
@@ -372,7 +425,10 @@ describe("rule 5 — the cache still works within one axis", () => {
       await call(client, axis);
       const second = structured(await call(client, axis));
 
-      expect(second.notes.some((note) => CACHE_NOTE.test(note)), axis).toBe(true);
+      expect(
+        second.notes.some((note) => CACHE_NOTE.test(note)),
+        axis,
+      ).toBe(true);
     }
   });
 
@@ -397,7 +453,9 @@ describe("rule 6 — a refusal on one axis says nothing about another", () => {
       const stub = servingPerAxis(pagesForAll(NOT_A_YEAR));
       const client = clientOver(stub.fetchImpl);
 
-      const refusal = await settle(failureOf(search(client, { query: NOT_A_YEAR, search_type: "year" })));
+      const refusal = await settle(
+        failureOf(search(client, { query: NOT_A_YEAR, search_type: "year" })),
+      );
 
       expect(refusal.code, `year with ${partner}`).toBe("invalid_input");
       expect(urlsOn(stub, "year"), `year with ${partner}`).toHaveLength(0);
@@ -414,9 +472,10 @@ describe("rule 6 — a refusal on one axis says nothing about another", () => {
       const following = structured(await call(clientAfter, partner, NOT_A_YEAR));
 
       expect(following.search_type, `${partner} after the refusal`).toBe(partner);
-      expect(following.results.map((row) => row.song_id), `${partner} after the refusal`).toEqual([
-        RECORD[partner].songId,
-      ]);
+      expect(
+        following.results.map((row) => row.song_id),
+        `${partner} after the refusal`,
+      ).toEqual([RECORD[partner].songId]);
       expect(following.total_matches, `${partner} after the refusal`).toBe(totalFor(partner));
 
       const beforeRefusal = servingPerAxis(pagesForAll(NOT_A_YEAR));
@@ -445,11 +504,16 @@ describe("rule 7 — an absence on one axis is not an absence on another", () =>
       expect(nothingFound.total_matches, label).toBe(0);
       expect(nothingFound.results, label).toHaveLength(0);
       expect(
-        nothingFound.notes.some((note) => /aucun|pas de r|nothing|no (result|match|song)/i.test(note)),
+        nothingFound.notes.some((note) =>
+          /aucun|pas de r|nothing|no (result|match|song)/i.test(note),
+        ),
         label,
       ).toBe(true);
 
-      expect(found.results.map((row) => row.song_id), label).toEqual([RECORD[full].songId]);
+      expect(
+        found.results.map((row) => row.song_id),
+        label,
+      ).toEqual([RECORD[full].songId]);
       expect(found.total_matches, label).toBe(totalFor(full));
     }
   });
@@ -467,7 +531,10 @@ describe("rule 7 — an absence on one axis is not an absence on another", () =>
       expect(textOfResult(found), `${full} must not claim ${empty}`).not.toContain(
         SEARCH_TYPE_LABELS[empty],
       );
-      expect(structured(found).notes.some((note) => /aucun|pas de r|nothing|no (result|match|song)/i.test(note)),
+      expect(
+        structured(found).notes.some((note) =>
+          /aucun|pas de r|nothing|no (result|match|song)/i.test(note),
+        ),
         `${full} must not carry the absence of ${empty}`,
       ).toBe(false);
     }
@@ -481,12 +548,17 @@ describe("rule 8 — a failure on one axis does not poison the pair", () => {
       const client = clientOver(stub.fetchImpl);
       const label = `${broken} broken, ${sound} sound`;
 
-      const failure = await settle(failureOf(search(client, { query: QUERY, search_type: broken })));
+      const failure = await settle(
+        failureOf(search(client, { query: QUERY, search_type: broken })),
+      );
       expect(failure.code, label).not.toBe("");
 
       const answer = structured(await call(client, sound));
       expect(answer.search_type, label).toBe(sound);
-      expect(answer.results.map((row) => row.song_id), label).toEqual([RECORD[sound].songId]);
+      expect(
+        answer.results.map((row) => row.song_id),
+        label,
+      ).toEqual([RECORD[sound].songId]);
       expect(answer.total_matches, label).toBe(totalFor(sound));
     }
   });

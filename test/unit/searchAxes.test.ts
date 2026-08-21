@@ -209,7 +209,9 @@ describe("rule 2 — the enum is what the tool declares", () => {
   });
 
   it("refuses the site's own numeric code as a search_type before making any request", async () => {
-    const text = await refusalText(callSearch(throwingFetch, { query: "vacances", search_type: "6" }));
+    const text = await refusalText(
+      callSearch(throwingFetch, { query: "vacances", search_type: "6" }),
+    );
     expect(text).toMatch(/search_type|invalid/i);
   });
 });
@@ -257,7 +259,10 @@ describe("rule 4 — no axis is merged into another", () => {
 
     for (const axis of AXES) {
       const text = textOfResult(
-        await callSearch(servingBytes(bytesOf(PAGE_OF_TWO)), { query: "vacances", search_type: axis }),
+        await callSearch(servingBytes(bytesOf(PAGE_OF_TWO)), {
+          query: "vacances",
+          search_type: axis,
+        }),
       );
       const others = AXES.filter((other) => other !== axis);
       for (const other of others) {
@@ -406,7 +411,9 @@ describe("rule 8 — several words restrict", () => {
 describe("rule 9 — everything already true stays true on the new axes", () => {
   it("refuses an empty query before any request, on the writer and lyrics axes", async () => {
     for (const axis of INVISIBLE_AXES) {
-      const text = await refusalText(callSearch(throwingFetch, { query: "   ", search_type: axis }));
+      const text = await refusalText(
+        callSearch(throwingFetch, { query: "   ", search_type: axis }),
+      );
       expect(text, axis).toMatch(/quer|invalid|empty/i);
     }
   });
@@ -428,8 +435,20 @@ describe("rule 9 — everything already true stays true on the new axes", () => 
     const page = resultsPage({
       header: "Résultat de votre recherche (753 pour « mer »)",
       rows: [
-        resultRow({ index: 0, songId: "7101", title: "La mer en hiver", artistId: "811", artist: "Les Phares" }),
-        resultRow({ index: 1, songId: "7102", title: "Marée basse", artistId: "812", artist: "Duo Inventé" }),
+        resultRow({
+          index: 0,
+          songId: "7101",
+          title: "La mer en hiver",
+          artistId: "811",
+          artist: "Les Phares",
+        }),
+        resultRow({
+          index: 1,
+          songId: "7102",
+          title: "Marée basse",
+          artistId: "812",
+          artist: "Duo Inventé",
+        }),
       ],
     });
     const structuredResult = structured(
@@ -444,7 +463,13 @@ describe("rule 9 — everything already true stays true on the new axes", () => 
     const page = resultsPage({
       header: null,
       rows: [
-        resultRow({ index: 0, songId: "7201", title: "Le tango du greffier", artistId: "821", artist: "Orchestre Fictif" }),
+        resultRow({
+          index: 0,
+          songId: "7201",
+          title: "Le tango du greffier",
+          artistId: "821",
+          artist: "Orchestre Fictif",
+        }),
       ],
     });
     const structuredResult = structured(
@@ -459,9 +484,27 @@ describe("rule 9 — everything already true stays true on the new axes", () => 
     const page = resultsPage({
       header: "Résultat de votre recherche (3 pour « plombier »)",
       rows: [
-        resultRow({ index: 0, songId: "7301", title: "Le twist du plombier", artistId: "831", artist: "Les Siphons" }),
-        resultRow({ index: 1, songId: "7302", title: "Complainte du parking", artistId: "832", artist: "Nadine Inventée" }),
-        resultRow({ index: 2, songId: "7303", title: "Fondue partie", artistId: "833", artist: "Duo Fictif" }),
+        resultRow({
+          index: 0,
+          songId: "7301",
+          title: "Le twist du plombier",
+          artistId: "831",
+          artist: "Les Siphons",
+        }),
+        resultRow({
+          index: 1,
+          songId: "7302",
+          title: "Complainte du parking",
+          artistId: "832",
+          artist: "Nadine Inventée",
+        }),
+        resultRow({
+          index: 2,
+          songId: "7303",
+          title: "Fondue partie",
+          artistId: "833",
+          artist: "Duo Fictif",
+        }),
       ],
     });
     const structuredResult = structured(
@@ -480,7 +523,10 @@ describe("rule 9 — everything already true stays true on the new axes", () => 
   it("carries the full sleeve and the thumbnail as published on the new axes", async () => {
     for (const axis of INVISIBLE_AXES) {
       const structuredResult = structured(
-        await callSearch(servingBytes(bytesOf(PAGE_OF_TWO)), { query: "vacances", search_type: axis }),
+        await callSearch(servingBytes(bytesOf(PAGE_OF_TWO)), {
+          query: "vacances",
+          search_type: axis,
+        }),
       );
       const first = structuredResult.results[0] as unknown as {
         image_url: string | null;

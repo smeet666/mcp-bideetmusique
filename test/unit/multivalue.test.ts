@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  fieldValues,
-  linkedValues,
-  splitValues,
-} from "../../src/bideetmusique/multivalue.js";
+import { fieldValues, linkedValues, splitValues } from "../../src/bideetmusique/multivalue.js";
 
 const NBSP = " ";
 
@@ -38,9 +34,7 @@ describe("linkedValues", () => {
     });
 
     it("trims the whitespace an anchor prints around a name", () => {
-      expect(linkedValues(`<a href="/x">  Alice Dona\n</a>`)).toEqual([
-        "Alice Dona",
-      ]);
+      expect(linkedValues(`<a href="/x">  Alice Dona\n</a>`)).toEqual(["Alice Dona"]);
     });
 
     it("drops anchors carrying no text", () => {
@@ -49,12 +43,12 @@ describe("linkedValues", () => {
     });
 
     it("strips the markup printed inside an anchor", () => {
-      expect(
-        linkedValues(`<a href="/x">Charles <em>Aznavour</em></a>`),
-      ).toEqual(["Charles Aznavour"]);
-      expect(
-        linkedValues(`<a href="/x"><strong>Boris</strong> <i>Vian</i></a>`),
-      ).toEqual(["Boris Vian"]);
+      expect(linkedValues(`<a href="/x">Charles <em>Aznavour</em></a>`)).toEqual([
+        "Charles Aznavour",
+      ]);
+      expect(linkedValues(`<a href="/x"><strong>Boris</strong> <i>Vian</i></a>`)).toEqual([
+        "Boris Vian",
+      ]);
     });
 
     it("returns an empty list for a fragment holding no anchor", () => {
@@ -74,33 +68,25 @@ describe("linkedValues", () => {
 
   describe("rule 8 — entities are decoded and a non-breaking space inside a name survives", () => {
     it("decodes an ampersand printed as an entity", () => {
-      expect(linkedValues(`<a href="/x">Sacha &amp; Co</a>`)).toEqual([
-        "Sacha & Co",
-      ]);
+      expect(linkedValues(`<a href="/x">Sacha &amp; Co</a>`)).toEqual(["Sacha & Co"]);
     });
 
     it("decodes a non-breaking space to U+00A0 and keeps it inside the name", () => {
-      expect(linkedValues(`<a href="/x">Jean&nbsp;Ferrat</a>`)).toEqual([
-        `Jean${NBSP}Ferrat`,
-      ]);
+      expect(linkedValues(`<a href="/x">Jean&nbsp;Ferrat</a>`)).toEqual([`Jean${NBSP}Ferrat`]);
     });
 
     it("keeps a literal non-breaking space inside a name rather than collapsing it", () => {
-      expect(linkedValues(`<a href="/x">Jean${NBSP}Ferrat</a>`)).toEqual([
-        `Jean${NBSP}Ferrat`,
-      ]);
+      expect(linkedValues(`<a href="/x">Jean${NBSP}Ferrat</a>`)).toEqual([`Jean${NBSP}Ferrat`]);
     });
 
     it("decodes the other entities the site prints in names", () => {
-      expect(linkedValues(`<a href="/x">L&#39;Affaire Louis&#39;Trio</a>`)).toEqual(
-        ["L'Affaire Louis'Trio"],
-      );
-      expect(linkedValues(`<a href="/x">Fran&ccedil;ois B&eacute;ranger</a>`)).toEqual(
-        ["François Béranger"],
-      );
-      expect(linkedValues(`<a href="/x">&lt;Anonyme&gt;</a>`)).toEqual([
-        "<Anonyme>",
+      expect(linkedValues(`<a href="/x">L&#39;Affaire Louis&#39;Trio</a>`)).toEqual([
+        "L'Affaire Louis'Trio",
       ]);
+      expect(linkedValues(`<a href="/x">Fran&ccedil;ois B&eacute;ranger</a>`)).toEqual([
+        "François Béranger",
+      ]);
+      expect(linkedValues(`<a href="/x">&lt;Anonyme&gt;</a>`)).toEqual(["<Anonyme>"]);
     });
   });
 });
@@ -108,54 +94,30 @@ describe("linkedValues", () => {
 describe("splitValues", () => {
   describe("rule 2 — splits on the separators the site uses, trims, drops empty parts", () => {
     it("splits on a slash, a spaced hyphen, a comma and a semicolon", () => {
-      expect(splitValues("Alice Dona / Boris Vian")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
-      expect(splitValues("Alice Dona - Boris Vian")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
-      expect(splitValues("Alice Dona,Boris Vian")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
-      expect(splitValues("Alice Dona;Boris Vian")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
+      expect(splitValues("Alice Dona / Boris Vian")).toEqual(["Alice Dona", "Boris Vian"]);
+      expect(splitValues("Alice Dona - Boris Vian")).toEqual(["Alice Dona", "Boris Vian"]);
+      expect(splitValues("Alice Dona,Boris Vian")).toEqual(["Alice Dona", "Boris Vian"]);
+      expect(splitValues("Alice Dona;Boris Vian")).toEqual(["Alice Dona", "Boris Vian"]);
     });
 
     it("trims the whitespace around each part", () => {
-      expect(splitValues("  Alice Dona ,  Boris Vian  ")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
-      expect(splitValues("Alice Dona ; Boris Vian")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
+      expect(splitValues("  Alice Dona ,  Boris Vian  ")).toEqual(["Alice Dona", "Boris Vian"]);
+      expect(splitValues("Alice Dona ; Boris Vian")).toEqual(["Alice Dona", "Boris Vian"]);
     });
 
     it("drops the empty parts a trailing or doubled separator leaves", () => {
-      expect(splitValues("Alice Dona / Boris Vian / ")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
-      expect(splitValues(", Alice Dona,, Boris Vian,")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
-      expect(splitValues("Alice Dona ; ; Boris Vian")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
+      expect(splitValues("Alice Dona / Boris Vian / ")).toEqual(["Alice Dona", "Boris Vian"]);
+      expect(splitValues(", Alice Dona,, Boris Vian,")).toEqual(["Alice Dona", "Boris Vian"]);
+      expect(splitValues("Alice Dona ; ; Boris Vian")).toEqual(["Alice Dona", "Boris Vian"]);
     });
 
     it("splits a list mixing several separators", () => {
-      expect(
-        splitValues("Alice Dona / Boris Vian - Eddy Marnay, Hubert Giraud"),
-      ).toEqual(["Alice Dona", "Boris Vian", "Eddy Marnay", "Hubert Giraud"]);
+      expect(splitValues("Alice Dona / Boris Vian - Eddy Marnay, Hubert Giraud")).toEqual([
+        "Alice Dona",
+        "Boris Vian",
+        "Eddy Marnay",
+        "Hubert Giraud",
+      ]);
     });
 
     it("splits ten writers published as one string", () => {
@@ -201,10 +163,7 @@ describe("splitValues", () => {
 
   describe("rule 4 — a comma splits, because that is what the site's punctuation says", () => {
     it("reads 'Aznavour, Charles' as two values", () => {
-      expect(splitValues("Aznavour, Charles")).toEqual([
-        "Aznavour",
-        "Charles",
-      ]);
+      expect(splitValues("Aznavour, Charles")).toEqual(["Aznavour", "Charles"]);
     });
 
     it("reads an inverted name list as one value per comma-separated part", () => {
@@ -263,21 +222,13 @@ describe("fieldValues", () => {
     });
 
     it("keeps an anchor whole even when its own text carries a comma", () => {
-      expect(fieldValues(anchor("Aznavour, Charles", "Aznavour"))).toEqual([
-        "Aznavour, Charles",
-      ]);
+      expect(fieldValues(anchor("Aznavour, Charles", "Aznavour"))).toEqual(["Aznavour, Charles"]);
     });
 
     it("splits the text of a fragment carrying no anchor", () => {
-      expect(fieldValues("Alice Dona / Boris Vian")).toEqual([
-        "Alice Dona",
-        "Boris Vian",
-      ]);
+      expect(fieldValues("Alice Dona / Boris Vian")).toEqual(["Alice Dona", "Boris Vian"]);
       expect(fieldValues("Jean-Pierre Lang")).toEqual(["Jean-Pierre Lang"]);
-      expect(fieldValues("Aznavour, Charles")).toEqual([
-        "Aznavour",
-        "Charles",
-      ]);
+      expect(fieldValues("Aznavour, Charles")).toEqual(["Aznavour", "Charles"]);
     });
 
     it("splits the text of a fragment whose markup carries no anchor", () => {
@@ -333,19 +284,12 @@ describe("fieldValues", () => {
 
   describe("rule 8 — entities are decoded and a non-breaking space inside a name survives", () => {
     it("decodes the entities of an anchored value", () => {
-      expect(fieldValues(`<a href="/x">Sacha &amp; Co</a>`)).toEqual([
-        "Sacha & Co",
-      ]);
-      expect(fieldValues(`<a href="/x">Jean&nbsp;Ferrat</a>`)).toEqual([
-        `Jean${NBSP}Ferrat`,
-      ]);
+      expect(fieldValues(`<a href="/x">Sacha &amp; Co</a>`)).toEqual(["Sacha & Co"]);
+      expect(fieldValues(`<a href="/x">Jean&nbsp;Ferrat</a>`)).toEqual([`Jean${NBSP}Ferrat`]);
     });
 
     it("decodes the entities of an unanchored value while splitting it", () => {
-      expect(fieldValues("Sacha &amp; Co / Boris Vian")).toEqual([
-        "Sacha & Co",
-        "Boris Vian",
-      ]);
+      expect(fieldValues("Sacha &amp; Co / Boris Vian")).toEqual(["Sacha & Co", "Boris Vian"]);
       expect(fieldValues("Jean&nbsp;Ferrat, Boris Vian")).toEqual([
         `Jean${NBSP}Ferrat`,
         "Boris Vian",
