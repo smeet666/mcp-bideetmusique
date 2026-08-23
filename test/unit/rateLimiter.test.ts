@@ -17,6 +17,9 @@ const EPOCH = new Date("2026-01-01T00:00:00.000Z");
 
 function recordingFetch(calls: Array<{ at: number; url: string }>): typeof fetch {
   return async (input) => {
+    // The clock here is the faked one, pinned to EPOCH below, so the moment is
+    // exact rather than measured: `performance.now()` is not driven by
+    // setSystemTime and would read zero.
     calls.push({ at: Date.now(), url: String(input) });
     return htmlResponse(fixtureBytes("search-page1.html"));
   };
