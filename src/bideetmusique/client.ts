@@ -243,7 +243,7 @@ export class BideEtMusiqueClient {
       this.logger.debug(`joining the read under way for ${url}`);
       // Joined rather than cached: the page is coming off the network right
       // now, and saying otherwise would credit a cache that holds nothing yet.
-      return { data: (await this.awaited(underWay, signal, url)) as T, cached: false };
+      return { data: (await awaited(underWay, signal, url)) as T, cached: false };
     }
 
     const shared = new AbortController();
@@ -263,51 +263,51 @@ export class BideEtMusiqueClient {
       return data;
     })();
     // Nobody is left to hear a rejection once every caller has walked away.
-    entry.promise.catch(() => {});
+    entry.promise.catch(() => undefined);
 
     // Dropped on failure as well as on success, so a bad minute is not
     // remembered as the answer for every later caller.
     this.inFlight.set(url, entry);
     try {
-      return { data: (await this.awaited(entry, signal, url)) as T, cached: false };
+      return { data: (await awaited(entry, signal, url)) as T, cached: false };
     } finally {
       if (this.inFlight.get(url) === entry) {
         this.inFlight.delete(url);
       }
     }
   }
+}
 
-  /**
-   * One caller's view of a shared read.
-   *
-   * The caller stops waiting the moment its own signal fires, while the read
-   * carries on for whoever else joined it. The request itself is abandoned once
-   * the last of them has gone.
-   */
-  private async awaited(entry: InFlightRead, signal: AbortSignal | undefined, url: string) {
-    entry.waiting += 1;
+/**
+ * One caller's view of a shared read.
+ *
+ * The caller stops waiting the moment its own signal fires, while the read
+ * carries on for whoever else joined it. The request itself is abandoned once
+ * the last of them has gone.
+ */
+async function awaited(entry: InFlightRead, signal: AbortSignal | undefined, url: string) {
+  entry.waiting += 1;
 
-    // A caller with no signal can never give up, so its share of the count is
-    // never released: the read stays wanted for as long as it is waiting.
-    if (signal === undefined) {
-      return entry.promise;
-    }
+  // A caller with no signal can never give up, so its share of the count is
+  // never released: the read stays wanted for as long as it is waiting.
+  if (signal === undefined) {
+    return entry.promise;
+  }
 
-    try {
-      return await Promise.race([
-        entry.promise,
-        new Promise<never>((_, reject) => {
-          if (signal.aborted) {
-            return reject(givenUp(url));
-          }
-          signal.addEventListener("abort", () => reject(givenUp(url)), { once: true });
-        }),
-      ]);
-    } finally {
-      entry.waiting -= 1;
-      if (entry.waiting <= 0) {
-        entry.controller.abort();
-      }
+  try {
+    return await Promise.race([
+      entry.promise,
+      new Promise<never>((_, reject) => {
+        if (signal.aborted) {
+          return reject(givenUp(url));
+        }
+        signal.addEventListener("abort", () => reject(givenUp(url)), { once: true });
+      }),
+    ]);
+  } finally {
+    entry.waiting -= 1;
+    if (entry.waiting <= 0) {
+      entry.controller.abort();
     }
   }
 }

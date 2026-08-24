@@ -1,7 +1,8 @@
 /** Domain types shared by the reading layer and the MCP tools. */
 
-export type { Duration, DurationPrecision } from "./bideetmusique/duration.js";
 import type { Duration } from "./bideetmusique/duration.js";
+
+export type { Duration, DurationPrecision } from "./bideetmusique/duration.js";
 
 /** An artist the record links to. */
 export interface ArtistLink {

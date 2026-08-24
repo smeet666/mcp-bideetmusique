@@ -73,7 +73,11 @@ function siteServing(served: Set<number>, asked: string[] = [], lyrics?: string[
 /** A draw handing out the given fractions in order, then repeating the last. */
 function drawing(...fractions: number[]): () => number {
   let index = 0;
-  return () => fractions[Math.min(index++, fractions.length - 1)] ?? 0;
+  return () => {
+    const at = Math.min(index, fractions.length - 1);
+    index += 1;
+    return fractions[at] ?? 0;
+  };
 }
 
 /** The fraction that draws exactly this id out of the range. */
