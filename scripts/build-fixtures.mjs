@@ -68,15 +68,17 @@ function pagebar({ active, pages, query, st }) {
   if (pages <= 1) {
     return "";
   }
-  const link = (page, inner) =>
-    `<td><a href="/recherche.html?st=${st}&amp;kw=${query}&amp;Page=${page}#resultat">${inner}</a></td>`;
+  const link = (at, inner) =>
+    `<td><a href="/recherche.html?st=${st}&amp;kw=${query}&amp;Page=${at}#resultat">${inner}</a></td>`;
 
   const cells = [];
   if (active > 1) {
     cells.push(link(active - 1, `<img src="/images/bt-previous.png" alt="&lsaquo;" />`));
   }
-  for (let page = 1; page <= pages; page += 1) {
-    cells.push(page === active ? `<td class="pageactive">${page}</td>` : link(page, String(page)));
+  for (let number = 1; number <= pages; number += 1) {
+    cells.push(
+      number === active ? `<td class="pageactive">${number}</td>` : link(number, String(number)),
+    );
   }
   if (active < pages) {
     cells.push(link(active + 1, `<img src="/images/bt-next.png" alt="&rsaquo;" />`));
