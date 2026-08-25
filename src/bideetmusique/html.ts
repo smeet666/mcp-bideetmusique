@@ -8,6 +8,9 @@
  * encoding the site actually uses rather than the one the platform prefers.
  */
 
+/** The encoding a Content-Type names, quoted or bare. */
+const CHARSET = /charset\s*=\s*"?([\w-]+)"?/i;
+
 /**
  * Windows-1252 rather than ISO-8859-1 proper: the two agree on every letter,
  * and the bytes 0x80-0x9F that Latin-1 leaves undefined carry the curly
@@ -27,7 +30,7 @@ const LATIN_LABELS = new Set([
 ]);
 
 export function charsetFromContentType(contentType?: string | null): string {
-  const match = /charset\s*=\s*"?([\w-]+)"?/i.exec(contentType ?? "");
+  const match = CHARSET.exec(contentType ?? "");
   const label = match?.[1]?.toLowerCase();
   if (!label) {
     return DEFAULT_CHARSET;

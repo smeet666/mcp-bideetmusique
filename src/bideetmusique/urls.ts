@@ -2,6 +2,9 @@
 
 import { invalidInput } from "../errors.js";
 
+const ABSOLUTE_URL = /^https?:\/\//i;
+const SONG_PATH = /^\/song\/(\d+)\.html$/i;
+
 export const BASE_URL = "https://www.bide-et-musique.com";
 
 const ALLOWED_HOSTS = new Set(["bide-et-musique.com", "www.bide-et-musique.com"]);
@@ -104,13 +107,13 @@ export function artistUrl(id: string): string {
  */
 export function extractSongId(rawUrl: string): string | null {
   let path = rawUrl;
-  if (/^https?:\/\//i.test(rawUrl)) {
+  if (ABSOLUTE_URL.test(rawUrl)) {
     if (!isBideHost(rawUrl)) {
       return null;
     }
     path = new URL(rawUrl).pathname;
   }
-  return /^\/song\/(\d+)\.html$/i.exec(path)?.[1] ?? null;
+  return SONG_PATH.exec(path)?.[1] ?? null;
 }
 
 /** True only for bide-et-musique.com, so a hostile URL cannot be used as a proxy. */

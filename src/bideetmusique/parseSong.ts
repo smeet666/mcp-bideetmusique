@@ -17,6 +17,8 @@ import { textOf } from "./html.js";
 import { fieldValues } from "./multivalue.js";
 import { artistUrl, songUrl, toAbsoluteUrl } from "./urls.js";
 
+const YEAR = /^\d{4}$/;
+
 /**
  * The rest of an opening tag, up to the `>` that closes it.
  *
@@ -221,7 +223,7 @@ export function parseSongRecord(html: string, url: string, id: string): Song {
   };
 
   const yearText = asText("annee");
-  const year = yearText !== null && /^\d{4}$/.test(yearText) ? Number.parseInt(yearText, 10) : null;
+  const year = yearText !== null && YEAR.test(yearText) ? Number.parseInt(yearText, 10) : null;
 
   const sleeve = SLEEVE.exec(record)?.[1];
   const thumbnail = THUMBNAIL.exec(record)?.[1];
