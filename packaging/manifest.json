@@ -56,6 +56,6 @@
   ],
   "compatibility": {
     "platforms": ["darwin", "win32", "linux"],
-    "runtimes": { "node": ">=20.0.0" }
+    "runtimes": { "node": ">=24.0.0" }
   }
 }
