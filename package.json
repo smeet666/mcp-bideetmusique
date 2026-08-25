@@ -47,7 +47,6 @@
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "pretest": "npm run build:fixtures",
     "test": "vitest run test/unit",
     "test:live": "vitest run test/live --testTimeout=60000",
     "test:eval": "vitest run test/eval --testTimeout=180000 --disable-console-intercept",
