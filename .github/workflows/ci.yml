@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# The job reads the repository and nothing else, so it is handed a token that
+# can do nothing else either.
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -45,7 +50,10 @@ jobs:
       - run: npm run typecheck
       # Unit tests only. The live suite and the evals read pages a volunteer
       # association pays for, and they are opt-in for that reason.
-      - run: npm test
+
+      # Three consecutive identical passes is the gate: a suite that varies
+      # between runs is a defect whatever any single run reports.
+      - run: for i in 1 2 3; do npm test || exit 1; done
       - run: npm run build
 
   image:
