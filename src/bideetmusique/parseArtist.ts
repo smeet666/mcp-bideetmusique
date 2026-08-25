@@ -12,6 +12,10 @@ import type { Artist, ArtistLink, DiscographyEntry, ExternalLink } from "../type
 import { textOf } from "./html.js";
 import { artistUrl, songUrl, toAbsoluteUrl } from "./urls.js";
 
+const LINE_BREAK = /<br\s*\/?>/i;
+/** The alternative text the site gives a thumbnail rather than a programme. */
+const THUMBNAIL_ALT = /^Vignette\b/i;
+
 /**
  * How far a lazy match may run before a page is judged unreadable.
  *
@@ -128,7 +132,7 @@ export function parseArtistPage(html: string, url: string, id: string): Artist {
 /** A cell stacking several values, one per line. */
 function splitLines(cell: string): string[] {
   return cell
-    .split(/<br\s*\/?>/i)
+    .split(LINE_BREAK)
     .map((line) => textOf(line))
     .filter((line) => line !== "");
 }
@@ -227,7 +231,7 @@ function readProgramming(row: string): string | null {
   IMAGE_ALT.lastIndex = 0;
   for (let match = IMAGE_ALT.exec(row); match !== null; match = IMAGE_ALT.exec(row)) {
     const alt = textOf(match[1] ?? "");
-    if (alt === "" || /^Vignette\b/i.test(alt)) {
+    if (alt === "" || THUMBNAIL_ALT.test(alt)) {
       continue;
     }
     return alt;

@@ -13,6 +13,8 @@ import type { NewSong, NewSongsFeed } from "../types.js";
 import { decodeEntities, textOf } from "./html.js";
 import { songUrl } from "./urls.js";
 
+const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
+
 /**
  * How far a lazy match may run before a page is judged unreadable.
  *
@@ -116,5 +118,5 @@ function readDate(raw: string | undefined): string | null {
   // A year outside the four digits an ISO date holds is written with a sign and
   // six digits, and taking its first ten characters names no day at all.
   const day = at.toISOString().slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+  return ISO_DAY.test(day) ? day : null;
 }
