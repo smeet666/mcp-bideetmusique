@@ -6,6 +6,7 @@
  * host application, so invalid input is refused and reported on stderr.
  */
 
+import process from "node:process";
 import { PKG_VERSION, REPO_URL } from "./version.js";
 
 export type LogLevel = "silent" | "error" | "info" | "debug";

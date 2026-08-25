@@ -56,7 +56,7 @@ async function run(body: string, limit = 20): Promise<ToolResult> {
 
 describe("the entries it answers with", () => {
   it("reads each entry into a record, an artist and a song", async () => {
-    const result = await run(feed([{ id: 38578, line: "Georgette Plana - La France en rose" }]));
+    const result = await run(feed([{ id: 38_578, line: "Georgette Plana - La France en rose" }]));
     const [first] = payload(result).results as Record<string, unknown>[];
 
     expect(first).toEqual({
@@ -79,7 +79,7 @@ describe("the entries it answers with", () => {
   });
 
   it("names the record and its address in the text as well", async () => {
-    const result = await run(feed([{ id: 38578, line: "Georgette Plana - La France en rose" }]));
+    const result = await run(feed([{ id: 38_578, line: "Georgette Plana - La France en rose" }]));
 
     expect(textOfResult(result)).toContain("Georgette Plana - La France en rose");
     expect(textOfResult(result)).toContain("https://www.bide-et-musique.com/song/38578.html");

@@ -23,7 +23,7 @@ import { songUrl } from "./urls.js";
  * magnitude past what the site prints there.
  */
 const INLINE_MAX = 400;
-const ROW_MAX = 8_000;
+const ROW_MAX = 8000;
 
 const ITEM = new RegExp(String.raw`<item\b[^>]*>([\s\S]{0,${ROW_MAX}}?)</item>`, "gi");
 const TITLE = new RegExp(String.raw`<title>([\s\S]{0,${INLINE_MAX}}?)</title>`, "i");

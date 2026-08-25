@@ -39,7 +39,7 @@ ${items}
 </channel></rss>`;
 }
 
-const ONE = feed([{ id: 38578, line: "Georgette Plana - La France en rose" }]);
+const ONE = feed([{ id: 38_578, line: "Georgette Plana - La France en rose" }]);
 
 describe("reading the entries", () => {
   it("reads the record behind each entry", () => {
