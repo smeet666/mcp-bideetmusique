@@ -42,9 +42,9 @@ describe("the rest of the configuration", () => {
     const config = loadConfig({});
 
     expect(config.minIntervalMs).toBe(3000);
-    expect(config.timeoutMs).toBe(20000);
+    expect(config.timeoutMs).toBe(20_000);
     expect(config.maxRetries).toBe(3);
-    expect(config.cacheTtlMs).toBe(900000);
+    expect(config.cacheTtlMs).toBe(900_000);
     expect(config.cacheMaxEntries).toBe(200);
     expect(config.logLevel).toBe("error");
   });
@@ -60,7 +60,7 @@ describe("the rest of the configuration", () => {
 
     expect(config.timeoutMs).toBe(5000);
     expect(config.maxRetries).toBe(1);
-    expect(config.cacheTtlMs).toBe(60000);
+    expect(config.cacheTtlMs).toBe(60_000);
     expect(config.cacheMaxEntries).toBe(10);
     expect(config.logLevel).toBe("debug");
   });

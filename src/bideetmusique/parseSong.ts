@@ -60,7 +60,7 @@ const THUMBNAIL =
  * magnitude past what the site prints there.
  */
 const INLINE_MAX = 400;
-const CELL_MAX = 2_000;
+const CELL_MAX = 2000;
 
 /** Fields are written as `Label : <span class="txtred2">value</span>`. */
 const FIELD = new RegExp(

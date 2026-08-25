@@ -22,8 +22,8 @@ import { artistUrl, songUrl, toAbsoluteUrl } from "./urls.js";
  * magnitude past what the site prints there.
  */
 const INLINE_MAX = 400;
-const CELL_MAX = 2_000;
-const ROW_MAX = 8_000;
+const CELL_MAX = 2000;
+const ROW_MAX = 8000;
 
 const NAME = new RegExp(
   String.raw`<div[^>]*class="titre-bloc"[^>]*>\s*<h2[^>]*>([\s\S]{0,${INLINE_MAX}}?)</h2>`,

@@ -7,6 +7,7 @@
  * that could not be read apart from a reader that is wrong.
  */
 
+import process from "node:process";
 import { describe, expect, it } from "vitest";
 
 import { BideEtMusiqueClient } from "../../src/bideetmusique/client.js";

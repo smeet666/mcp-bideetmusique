@@ -36,8 +36,8 @@ const HEADER_COUNT = /R[ée]sultat de votre recherche\s*\(\s*([\d\s .,]+?)\s+po
  * magnitude past what the site prints there.
  */
 const INLINE_MAX = 400;
-const CELL_MAX = 2_000;
-const ROW_MAX = 8_000;
+const CELL_MAX = 2000;
+const ROW_MAX = 8000;
 
 const ROW = new RegExp(
   String.raw`<tr\s+class=["']?p[01]["']?[^>]*>([\s\S]{0,${ROW_MAX}}?)</tr>`,
@@ -169,14 +169,14 @@ function readRows(block: string): { songs: SongSummary[]; unreadableRows: number
 function readRow(row: string): SongSummary | null {
   const songMatch = SONG_ANCHOR.exec(row);
   const artistMatch = ARTIST_ANCHOR.exec(row);
-  if (!songMatch || !artistMatch) {
+  if (!(songMatch && artistMatch)) {
     return null;
   }
 
   const songId = songMatch[1];
   const artistId = artistMatch[1];
   const title = textOf(songMatch[2] ?? "");
-  if (!songId || !artistId || title === "") {
+  if (!(songId && artistId) || title === "") {
     return null;
   }
 
