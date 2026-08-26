@@ -89,6 +89,24 @@ Then register it with your MCP client:
 }
 ```
 
+### With Docker
+
+```json
+{
+  "mcpServers": {
+    "bideetmusique": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "ghcr.io/smeet666/mcp-bideetmusique:2.0.0"]
+    }
+  }
+}
+```
+
+`-i` keeps stdin open, which is where the protocol travels, and no `-t` is
+passed: a TTY rewrites the stream and breaks it. The container needs outbound
+HTTPS to `www.bide-et-musique.com`, and nothing else: no volume, no port, no
+environment variable, no credential.
+
 ## Configuration
 
 Every variable is optional.
