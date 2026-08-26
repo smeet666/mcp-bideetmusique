@@ -48,7 +48,7 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run test/unit",
-    "coverage": "vitest run --coverage",
+    "coverage": "vitest run test/unit --coverage",
     "test:live": "vitest run test/live --testTimeout=60000",
     "test:eval": "vitest run test/eval --testTimeout=180000 --disable-console-intercept",
     "build:fixtures": "node scripts/build-fixtures.mjs",
