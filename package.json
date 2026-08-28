@@ -39,6 +39,7 @@
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
+    "PRIVACY.md",
     "server.json"
   ],
   "engines": {
@@ -52,6 +53,7 @@
     "test:live": "vitest run test/live --testTimeout=60000",
     "test:eval": "vitest run test/eval --testTimeout=180000 --disable-console-intercept",
     "build:fixtures": "node scripts/build-fixtures.mjs",
+    "build:manifest": "npm run build && node scripts/build-manifest-tools.mjs",
     "format": "biome check --write && prettier --write \"**/*.{md,yml}\"",
     "check": "biome ci && prettier --check \"**/*.{md,yml}\"",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build",
