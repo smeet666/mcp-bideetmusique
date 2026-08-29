@@ -44,121 +44,23 @@
   "tools": [
     {
       "name": "search_songs",
-      "description": "Search the collection along one named axis.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "query": {
-            "type": "string",
-            "maxLength": 200,
-            "description": "What to search for, in French, for example 'Pierre Bachelet' or 'vacances'."
-          },
-          "search_type": {
-            "type": "string",
-            "enum": ["performer", "title", "writer", "lyrics", "label", "year"],
-            "description": "Which axis to search: 'performer' for the artist credited on the record, 'title' for the name of the song, 'writer' for who wrote or composed it, 'lyrics' for the words sung in it, 'label' for the label it came out on, 'year' for the year printed on it. The 'year' axis takes one four-digit year and nothing else: the site drops any other word there instead of filtering on it."
-          },
-          "page": {
-            "default": 1,
-            "description": "Which page of results to read. The answer states which page the site served.",
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 200
-          },
-          "limit": {
-            "default": 20,
-            "description": "Maximum songs to return from that page.",
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50
-          }
-        },
-        "required": ["query", "search_type"],
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": false
-      }
+      "description": "Search the collection along one named axis."
     },
     {
       "name": "get_song",
-      "description": "Read one record, with the words its page publishes.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "song_id": {
-            "type": "string",
-            "maxLength": 20,
-            "pattern": "^\\d+$",
-            "description": "The song id returned by search_songs, digits only, for example '1734'."
-          },
-          "include_lyrics": {
-            "default": true,
-            "description": "Whether to return the transcription the page carries. A record whose page has one runs to a few thousand characters, so ask for false when the question is about the record: the year, the label or the writers. 'lyrics.available' still says whether the page has one.",
-            "type": "boolean"
-          }
-        },
-        "required": ["song_id"],
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": false
-      }
+      "description": "Read one record, with the words its page publishes."
     },
     {
       "name": "get_artist",
-      "description": "Read an artist's page and what the collection holds of them.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "artist_id": {
-            "type": "string",
-            "maxLength": 20,
-            "pattern": "^\\d+$",
-            "description": "The artist id returned by search_songs, get_song or get_random_song, digits only, for example '290'."
-          },
-          "limit": {
-            "default": 100,
-            "description": "Maximum songs of the discography to return.",
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 200
-          }
-        },
-        "required": ["artist_id"],
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": false
-      }
+      "description": "Read an artist's page and what the collection holds of them."
     },
     {
       "name": "get_random_song",
-      "description": "Read a record drawn at random from the collection.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "include_lyrics": {
-            "default": true,
-            "description": "Whether to return the transcription the drawn record's page carries. Browsing chains many calls, and a record with one runs to a few thousand characters.",
-            "type": "boolean"
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": false
-      }
+      "description": "Read a record drawn at random from the collection."
     },
     {
       "name": "list_new_songs",
-      "description": "Read what the collection has just catalogued.",
-      "inputSchema": {
-        "type": "object",
-        "properties": {
-          "limit": {
-            "default": 20,
-            "description": "Maximum entries to return, taken from the head of the feed.",
-            "type": "integer",
-            "minimum": 1,
-            "maximum": 50
-          }
-        },
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "additionalProperties": false
-      }
+      "description": "Read what the collection has just catalogued."
     }
   ],
   "compatibility": {
