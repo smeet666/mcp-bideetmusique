@@ -64,7 +64,7 @@ Node 24 or later is required, and no environment variable has to be set.
   "mcpServers": {
     "bideetmusique": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "ghcr.io/smeet666/mcp-bideetmusique:2.0.0"]
+      "args": ["run", "-i", "--rm", "ghcr.io/smeet666/mcp-bideetmusique:2.0.1"]
     }
   }
 }
@@ -76,7 +76,7 @@ because a TTY rewrites the stream. The container needs outbound HTTPS to
 
 ### Bundle, without npm
 
-Download `mcp-bideetmusique-2.0.0.mcpb` from
+Download `mcp-bideetmusique-2.0.1.mcpb` from
 [the latest release](https://github.com/smeet666/mcp-bideetmusique/releases/latest)
 and open it. A client that supports MCP bundles installs it on its own, with no
 npm and no configuration file to edit. The bundle carries its dependencies, so
@@ -350,7 +350,7 @@ renseigner.
   "mcpServers": {
     "bideetmusique": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "ghcr.io/smeet666/mcp-bideetmusique:2.0.0"]
+      "args": ["run", "-i", "--rm", "ghcr.io/smeet666/mcp-bideetmusique:2.0.1"]
     }
   }
 }
@@ -363,7 +363,7 @@ port, aucun identifiant.
 
 ### Bundle, sans npm
 
-Téléchargez `mcp-bideetmusique-2.0.0.mcpb` depuis
+Téléchargez `mcp-bideetmusique-2.0.1.mcpb` depuis
 [la dernière publication](https://github.com/smeet666/mcp-bideetmusique/releases/latest)
 et ouvrez-le. Un client qui gère les bundles MCP l'installe seul, sans npm et
 sans fichier de configuration à modifier. Le bundle emporte ses dépendances, donc
