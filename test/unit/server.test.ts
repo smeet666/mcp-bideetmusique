@@ -59,12 +59,9 @@ describe("the tool the server registers", () => {
       additionalProperties?: boolean;
     };
 
-    expect(Object.keys(schema.properties ?? {}).sort()).toEqual([
-      "limit",
-      "page",
-      "query",
-      "search_type",
-    ]);
+    expect(
+      Object.keys(schema.properties ?? {}).sort((a, b) => Number(a > b) - Number(a < b)),
+    ).toEqual(["limit", "page", "query", "search_type"]);
     expect(schema.additionalProperties).toBe(false);
     expect(schema.required).toEqual(expect.arrayContaining(["query", "search_type"]));
   });

@@ -225,7 +225,9 @@ describe("rule 2 — the enum is what the tool declares", () => {
     const schema = tool!.inputSchema as { properties: { search_type?: { enum?: string[] } } };
     const declared = schema.properties.search_type?.enum ?? [];
 
-    expect([...declared].sort()).toEqual([...ALL_AXES].sort());
+    expect([...declared].sort((a, b) => Number(a > b) - Number(a < b))).toEqual(
+      [...ALL_AXES].sort((a, b) => Number(a > b) - Number(a < b)),
+    );
   });
 
   it("refuses an axis the site does not offer, before making any request", async () => {
