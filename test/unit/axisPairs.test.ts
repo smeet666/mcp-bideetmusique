@@ -256,7 +256,11 @@ describe("the fifteen pairs themselves", () => {
     expect(AXES).toHaveLength(6);
     expect(PAIRS).toHaveLength(15);
     expect(ORDERED).toHaveLength(30);
-    expect(new Set(PAIRS.map((pair) => [...pair].sort().join("+"))).size).toBe(15);
+    expect(
+      new Set(
+        PAIRS.map((pair) => [...pair].sort((a, b) => Number(a > b) - Number(a < b)).join("+")),
+      ).size,
+    ).toBe(15);
     expect(PAIRS_WITH_YEAR).toHaveLength(5);
   });
 });
