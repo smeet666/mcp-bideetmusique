@@ -316,7 +316,7 @@ async function readBounded(response: Response, url: string): Promise<Uint8Array>
   let read = 0;
 
   try {
-    for (;;) {
+    while (true) {
       const { done, value } = await reader.read();
       if (done) {
         break;
